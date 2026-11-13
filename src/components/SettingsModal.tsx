@@ -1,7 +1,7 @@
 import React from 'react';
-import { Reciter, RepetitionSettings, RiwayahId } from '../types/quran';
+import { AyahFontSize, Reciter, RepetitionSettings, RiwayahId } from '../types/quran';
 import { RECITERS, RIWAYAT_LIST } from '../data/quranData';
-import { Sliders, UserCheck, Clock, Gauge, BookMarked } from 'lucide-react';
+import { Sliders, UserCheck, Clock, Gauge, BookMarked, Type } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -294,6 +294,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Quran Verse Font Size */}
+          <div className="pt-2 border-t border-[#DDD3BF] dark:border-[#2A3728]">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-[#485643] dark:text-[#B7C7B2] mb-1.5">
+              <Type className="h-4 w-4 text-[#52674B]" />
+              حجم خط الآيات في اللوحة
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(
+                [
+                  { id: 'small', label: 'صغير (مضغوط)' },
+                  { id: 'medium', label: 'متوسط' },
+                  { id: 'large', label: 'كبير' },
+                ] as { id: AyahFontSize; label: string }[]
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => onUpdateSettings({ ...settings, ayahFontSize: opt.id })}
+                  className={`py-1.5 px-2 text-xs font-bold rounded-lg border transition-colors ${
+                    (settings.ayahFontSize || 'small') === opt.id
+                      ? 'border-[#52674B] bg-[#52674B] text-white'
+                      : 'border-[#D5CABB] dark:border-[#2F3F2D] bg-[#FDFCF9] dark:bg-[#111710] text-[#485643] dark:text-[#B7C7B2]'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>

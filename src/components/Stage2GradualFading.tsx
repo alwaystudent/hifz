@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { AyahItem, SurahMeta, WordToken, Reciter, StageMode } from '../types/quran';
+import { AyahFontSize, AyahItem, SurahMeta, WordToken, Reciter, StageMode } from '../types/quran';
 import { tokenizeAyah } from '../utils/arabic';
 import { alignSpokenTranscript } from '../utils/alignment';
 import { startReciterAyahPlayback } from '../utils/audioPlayback';
@@ -27,6 +27,7 @@ interface Stage2GradualFadingProps {
   fromAyah: number;
   toAyah: number;
   reciter?: Reciter;
+  ayahFontSize?: AyahFontSize;
   autoStartMic?: boolean;
   onAdvanceToStage3: (options?: { autoStartMic?: boolean }) => void;
   onSkipStage?: () => void;
@@ -41,6 +42,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
   fromAyah,
   toAyah,
   reciter,
+  ayahFontSize = 'small',
   autoStartMic = false,
   onAdvanceToStage3,
   onSkipStage,
@@ -489,10 +491,16 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
       {/* Maximized Scrollable Mushaf Canvas inside Fixed Screen */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-7"
+        className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-6"
       >
         <div
-          className="font-quran text-2xl sm:text-3xl lg:text-4xl leading-loose sm:leading-loose lg:leading-loose text-center text-[#232B20] dark:text-[#F3F8F2] select-none"
+          className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
+            ayahFontSize === 'large'
+              ? 'text-2xl sm:text-3xl leading-[2.3]'
+              : ayahFontSize === 'medium'
+              ? 'text-xl sm:text-2xl leading-[2.15]'
+              : 'text-lg sm:text-xl lg:text-[22px] leading-[2.05]'
+          }`}
           dir="rtl"
         >
           {selectedAyahs.map((ayah) => {
@@ -537,7 +545,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                           }
                         }
                       }}
-                      className={`relative inline-block px-1.5 py-0.5 mx-0.5 rounded-xl transition-colors duration-200 ${
+                      className={`relative inline-block px-1 py-0 mx-0.5 rounded-lg transition-colors duration-200 ${
                         isMatched
                           ? 'bg-[#52674B]/20 dark:bg-[#738C6B]/35 text-[#1F271D] dark:text-white font-bold ring-1 ring-[#52674B]/30'
                           : isTargetNext
@@ -559,7 +567,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
 
                       {!isWordVisible && (
                         <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="w-full border-b-2 border-dashed -mb-2 border-[#52674B]/60 dark:border-[#738C6B]/60" />
+                          <span className="w-full border-b-2 border-dashed -mb-1.5 border-[#52674B]/60 dark:border-[#738C6B]/60" />
                         </span>
                       )}
                     </span>
@@ -569,7 +577,13 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                 <button
                   type="button"
                   onClick={() => playAyahAudio(ayah.numberInSurah)}
-                  className={`inline-flex items-center gap-1 mx-1.5 px-2 py-0.5 rounded-xl transition-colors cursor-pointer font-scheherazade text-2xl sm:text-3xl ayah-number font-normal ${
+                  className={`inline-flex items-center gap-1 mx-1 px-1.5 py-0 rounded-lg transition-colors cursor-pointer font-scheherazade ayah-number font-normal ${
+                    ayahFontSize === 'large'
+                      ? 'text-xl sm:text-2xl'
+                      : ayahFontSize === 'medium'
+                      ? 'text-lg sm:text-xl'
+                      : 'text-base sm:text-lg'
+                  } ${
                     isPlayingThis
                       ? 'bg-[#52674B] text-white ring-2 ring-[#738C6B]/40'
                       : 'text-[#52674B] dark:text-[#A4BA9E] hover:bg-[#ECE4D4] dark:hover:bg-[#202B1E]'
@@ -577,7 +591,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                   title={`الآية ${ayah.numberInSurah} (انقر للاستماع)`}
                 >
                   <span>۝{ayah.numberInSurah}</span>
-                  {isPlayingThis && <Volume2 className="h-4 w-4 inline" />}
+                  {isPlayingThis && <Volume2 className="h-3.5 w-3.5 inline" />}
                 </button>{' '}
               </span>
             );

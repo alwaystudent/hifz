@@ -98,6 +98,7 @@ export default function App() {
     autoAdvance: true,
     playbackSpeed: 1.0,
     pauseBetweenAyahsSec: 2,
+    ayahFontSize: 'small',
   });
 
   // Theme state
@@ -405,6 +406,7 @@ export default function App() {
                 fromAyah={fromAyah}
                 toAyah={toAyah}
                 reciter={selectedReciter}
+                ayahFontSize={settings.ayahFontSize || 'small'}
                 autoStartMic={autoStartMic}
                 onAdvanceToStage3={handleAdvanceToStage3}
                 onSkipStage={handleSkipStage2}
@@ -419,6 +421,7 @@ export default function App() {
                 fromAyah={fromAyah}
                 toAyah={toAyah}
                 reciter={selectedReciter}
+                ayahFontSize={settings.ayahFontSize || 'small'}
                 autoStartMic={autoStartMic}
                 onBackToStage2={() => handleManualSelectStage('stage2')}
                 onBackToStage1={() => handleManualSelectStage('stage1')}
@@ -435,6 +438,7 @@ export default function App() {
                 fromAyah={fromAyah}
                 toAyah={toAyah}
                 riwayah={riwayah}
+                ayahFontSize={settings.ayahFontSize || 'small'}
                 initialInviteRoomId={initialInviteRoomId}
                 onSyncPassageToApp={handleSyncPeerPassage}
                 onExitPeerMode={() => setCurrentStage('stage1')}

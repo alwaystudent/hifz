@@ -89,6 +89,8 @@ export interface WordToken {
   tajweedRule?: TajweedRuleInfo | null;
 }
 
+export type AyahFontSize = 'small' | 'medium' | 'large';
+
 export interface RepetitionSettings {
   singleAyahRepeats: number;     // e.g. 3
   linkRepeats: number;           // e.g. 3
@@ -96,6 +98,7 @@ export interface RepetitionSettings {
   autoAdvance: boolean;
   playbackSpeed: number;         // 0.8, 1.0, 1.25
   pauseBetweenAyahsSec: number;  // seconds of silence between repeats (great for learner repeating aloud)
+  ayahFontSize?: AyahFontSize;
 }
 
 export interface MemorizationStats {

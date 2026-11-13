@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AyahItem, RiwayahId, RoomPassageState, SurahMeta } from '../types/quran';
+import { AyahFontSize, AyahItem, RiwayahId, RoomPassageState, SurahMeta } from '../types/quran';
 import { SURAHS_LIST, RIWAYAT_LIST } from '../data/quranData';
 import { tokenizeAyah } from '../utils/arabic';
 import { usePeerVoiceCall } from '../hooks/usePeerVoiceCall';
@@ -25,6 +25,7 @@ interface PeerTasmeeViewProps {
   fromAyah: number;
   toAyah: number;
   riwayah: RiwayahId;
+  ayahFontSize?: AyahFontSize;
   initialInviteRoomId?: string | null;
   onSyncPassageToApp: (passage: RoomPassageState) => void;
   onExitPeerMode: () => void;
@@ -53,6 +54,7 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
   fromAyah,
   toAyah,
   riwayah,
+  ayahFontSize = 'small',
   initialInviteRoomId,
   onSyncPassageToApp,
   onExitPeerMode,
@@ -509,7 +511,13 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
           )}
 
           <div
-            className="font-quran text-2xl sm:text-3xl lg:text-4xl leading-loose sm:leading-loose lg:leading-loose text-center text-[#232B20] dark:text-[#F3F8F2] select-none"
+            className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
+              ayahFontSize === 'large'
+                ? 'text-2xl sm:text-3xl leading-[2.3]'
+                : ayahFontSize === 'medium'
+                ? 'text-xl sm:text-2xl leading-[2.15]'
+                : 'text-lg sm:text-xl lg:text-[22px] leading-[2.05]'
+            }`}
             dir="rtl"
           >
             {selectedAyahs.map((ayah) => {
@@ -525,7 +533,7 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                       <span
                         key={word.id}
                         onClick={() => syncFocusWord(isFocused ? null : word.id, ayah.numberInSurah)}
-                        className={`relative inline-block px-1.5 py-0.5 mx-0.5 rounded-xl cursor-pointer transition-colors ${
+                        className={`relative inline-block px-1 py-0 mx-0.5 rounded-lg cursor-pointer transition-colors ${
                           isFocused
                             ? 'bg-[#52674B]/25 dark:bg-[#738C6B]/45 ring-2 ring-[#52674B] font-bold'
                             : 'hover:bg-[#E2D8C3]/50 dark:hover:bg-[#253223]/50'
@@ -537,7 +545,7 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                         </span>
                         {shouldHide && !isFocused && (
                           <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="w-full border-b-2 border-dashed -mb-2 border-[#52674B]/45" />
+                            <span className="w-full border-b-2 border-dashed -mb-1.5 border-[#52674B]/45" />
                           </span>
                         )}
                       </span>
@@ -545,7 +553,13 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                   })}
                   <span
                     onClick={() => syncFocusWord(null, isAyahFocused ? null : ayah.numberInSurah)}
-                    className={`inline-block font-scheherazade mx-1.5 px-1.5 rounded-lg cursor-pointer text-2xl sm:text-3xl ayah-number ${
+                    className={`inline-block font-scheherazade mx-1 px-1 rounded-lg cursor-pointer ayah-number ${
+                      ayahFontSize === 'large'
+                        ? 'text-xl sm:text-2xl'
+                        : ayahFontSize === 'medium'
+                        ? 'text-lg sm:text-xl'
+                        : 'text-base sm:text-lg'
+                    } ${
                       isAyahFocused
                         ? 'bg-[#52674B] text-white'
                         : 'text-[#52674B] dark:text-[#A4BA9E]'

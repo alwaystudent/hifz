@@ -102,7 +102,7 @@ async function startServer() {
 
   // Health endpoint
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, activeRooms: rooms.size });
+    res.json({ ok: true, service: 'ratel-tasmee', activeRooms: rooms.size });
   });
 
   // Create a new 2-person Tasmee room

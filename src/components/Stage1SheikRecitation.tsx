@@ -538,10 +538,16 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
       {/* Maximized Scrollable Mushaf Canvas inside Fixed Screen */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-7"
+        className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-6"
       >
         <div
-          className="font-quran text-2xl sm:text-3xl lg:text-4xl leading-loose sm:leading-loose lg:leading-loose text-center text-[#232B20] dark:text-[#F3F8F2] select-none"
+          className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
+            settings.ayahFontSize === 'large'
+              ? 'text-2xl sm:text-3xl leading-[2.3]'
+              : settings.ayahFontSize === 'medium'
+              ? 'text-xl sm:text-2xl leading-[2.15]'
+              : 'text-lg sm:text-xl lg:text-[22px] leading-[2.05]'
+          }`}
           dir="rtl"
         >
           {filteredAyahs.map((ayah) => {
@@ -556,7 +562,7 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                   ayahSpanRefs.current[ayah.numberInSurah] = el;
                 }}
                 onClick={() => jumpToAyah(ayah.numberInSurah)}
-                className={`inline transition-colors duration-200 cursor-pointer rounded-xl px-2 py-0.5 mx-0.5 ${
+                className={`inline transition-colors duration-200 cursor-pointer rounded-lg px-1 py-0.5 mx-0.5 ${
                   isPlayingThisAyah
                     ? 'bg-[#52674B]/20 dark:bg-[#738C6B]/35 text-[#1C2519] dark:text-white font-bold ring-1 ring-[#738C6B]/50'
                     : isInCurrentLinkGroup
@@ -566,7 +572,15 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                 title={`الآية ${ayah.numberInSurah} (انقر للاستماع)`}
               >
                 <span>{ayah.text}</span>
-                <span className="inline-block font-scheherazade text-[#52674B] dark:text-[#A4BA9E] mr-2 text-2xl sm:text-3xl ayah-number font-normal">
+                <span
+                  className={`inline-block font-scheherazade text-[#52674B] dark:text-[#A4BA9E] mr-1.5 ayah-number font-normal ${
+                    settings.ayahFontSize === 'large'
+                      ? 'text-xl sm:text-2xl'
+                      : settings.ayahFontSize === 'medium'
+                      ? 'text-lg sm:text-xl'
+                      : 'text-base sm:text-lg'
+                  }`}
+                >
                   ۝{ayah.numberInSurah}
                 </span>{' '}
               </span>
