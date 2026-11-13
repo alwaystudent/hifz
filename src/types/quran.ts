@@ -55,6 +55,27 @@ export interface RoomPassageState {
   riwayah: RiwayahId;
 }
 
+export interface FriendItem {
+  code: string;
+  name: string;
+  addedAt: number;
+}
+
+export interface DirectCallInvite {
+  roomId: string;
+  callerCode: string;
+  callerName: string;
+  passage: RoomPassageState;
+  receivedAt: number;
+}
+
+export interface PendingRoomAction {
+  type: 'join';
+  roomId: string;
+  passage?: RoomPassageState;
+  friendName?: string;
+}
+
 export interface QueueItem {
   id: string;
   type: 'single_ayah' | 'cumulative_link' | 'final_review';
@@ -99,6 +120,7 @@ export interface RepetitionSettings {
   playbackSpeed: number;         // 0.8, 1.0, 1.25
   pauseBetweenAyahsSec: number;  // seconds of silence between repeats (great for learner repeating aloud)
   ayahFontSize?: AyahFontSize;
+  showTajweedCues?: boolean;
 }
 
 export interface MemorizationStats {

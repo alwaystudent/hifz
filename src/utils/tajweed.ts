@@ -107,6 +107,21 @@ export function detectTajweedRule(
     }
   }
 
+  // 6. مد طبيعي أو عارض (ألف خنجرية أو فتحة+ألف أو ضمة+واو مدية أو كسرة+ياء مدية)
+  if (
+    wordText.includes('\u0670') ||
+    /\u064E\u0627(?![\u0651\u0652])/.test(wordText) ||
+    /\u064F\u0648(?![\u064E\u064F\u0650\u0651\u0652\u06E1])/.test(wordText) ||
+    /\u0650\u064A(?![\u064E\u064F\u0650\u0651\u0652\u06E1])/.test(wordText)
+  ) {
+    return {
+      ruleName: 'مدّ طبيعي / عارض',
+      category: 'madd',
+      description: 'حرف مدّ مسبوق بحركة مجانسة له',
+      tip: 'مدّ الصوت بمقدار حركتين وصلاً (أو ٢/٤/٦ عند الوقف).',
+    };
+  }
+
   return null;
 }
 

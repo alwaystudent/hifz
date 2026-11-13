@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { AyahFontSize, AyahItem, SurahMeta, WordToken, Reciter, StageMode, EvaluationRating } from '../types/quran';
+import { AyahFontSize, AyahItem, SurahMeta, WordToken, Reciter, StageMode, EvaluationRating, TajweedRuleInfo } from '../types/quran';
 import { tokenizeAyah } from '../utils/arabic';
 import { alignSpokenTranscript } from '../utils/alignment';
 import { startReciterAyahPlayback } from '../utils/audioPlayback';
@@ -32,12 +32,77 @@ interface Stage3RealtimeRevealProps {
   toAyah: number;
   reciter?: Reciter;
   ayahFontSize?: AyahFontSize;
+  showTajweedCues?: boolean;
   autoStartMic?: boolean;
   onBackToStage2: () => void;
   onBackToStage1: () => void;
   onSkipStage?: () => void;
   onSaveReport: (rating: EvaluationRating, errorsCount: number, totalWords: number) => void;
   onOpenReports: () => void;
+}
+
+interface ActiveTajweedCue {
+  id: number;
+  wordText: string;
+  rule: TajweedRuleInfo;
+}
+
+function getTajweedCueStyles(category: TajweedRuleInfo['category']): {
+  container: string;
+  dot: string;
+  label: string;
+} {
+  switch (category) {
+    case 'madd':
+      return {
+        container:
+          'bg-[#FBF6EA]/95 dark:bg-[#232015]/95 border-[#D8BE82]/70 text-[#7A5B18] dark:text-[#EAD092]',
+        dot: 'bg-[#C89B3C]',
+        label: 'مَدّ',
+      };
+    case 'ghunnah':
+      return {
+        container:
+          'bg-[#EDF5EC]/95 dark:bg-[#172418]/95 border-[#7FA377]/70 text-[#2E522B] dark:text-[#AED4A8]',
+        dot: 'bg-[#52824B]',
+        label: 'غُنّة',
+      };
+    case 'qalqalah':
+      return {
+        container:
+          'bg-[#EAF3F2]/95 dark:bg-[#142221]/95 border-[#6FA39E]/70 text-[#235450] dark:text-[#9FD3CE]',
+        dot: 'bg-[#3F827B]',
+        label: 'قَلْقَلة',
+      };
+    case 'idgham':
+      return {
+        container:
+          'bg-[#EEF1F7]/95 dark:bg-[#191E29]/95 border-[#8B9AC2]/70 text-[#33416B] dark:text-[#B4C3EA]',
+        dot: 'bg-[#566A9E]',
+        label: 'إدْغام',
+      };
+    case 'ikhfa':
+      return {
+        container:
+          'bg-[#F4EEF5]/95 dark:bg-[#221A24]/95 border-[#B28FB9]/70 text-[#5C3963] dark:text-[#D5B2DC]',
+        dot: 'bg-[#875C90]',
+        label: 'إخْفاء',
+      };
+    case 'iqlab':
+      return {
+        container:
+          'bg-[#F8EFEA]/95 dark:bg-[#261C18]/95 border-[#C4967E]/70 text-[#6F412B] dark:text-[#E2B49D]',
+        dot: 'bg-[#A3694D]',
+        label: 'إقْلاب',
+      };
+    default:
+      return {
+        container:
+          'bg-[#F6F2EA]/95 dark:bg-[#182117]/95 border-[#C5BAA5]/70 text-[#3D4D38] dark:text-[#C5D8C1]',
+        dot: 'bg-[#52674B]',
+        label: 'تَجْويد',
+      };
+  }
 }
 
 export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
@@ -47,6 +112,7 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
   toAyah,
   reciter,
   ayahFontSize = 'small',
+  showTajweedCues = true,
   autoStartMic = false,
   onBackToStage2,
   onBackToStage1,
@@ -63,6 +129,7 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [playingAyahAudio, setPlayingAyahAudio] = useState<number | null>(null);
   const [selectedRating, setSelectedRating] = useState<EvaluationRating | null>(null);
+  const [activeTajweedCue, setActiveTajweedCue] = useState<ActiveTajweedCue | null>(null);
 
   const activeWordIdxRef = useRef(0);
   activeWordIdxRef.current = activeWordIdx;
@@ -84,6 +151,42 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
     return list;
   }, [selectedAyahs]);
 
+  const cueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cueCounterRef = useRef(0);
+
+  const triggerTajweedCue = useCallback(
+    (words: WordToken[]) => {
+      if (!showTajweedCues) return;
+      const withRule = [...words].reverse().find((w) => w.tajweedRule);
+      if (!withRule || !withRule.tajweedRule) return;
+
+      cueCounterRef.current += 1;
+      setActiveTajweedCue({
+        id: cueCounterRef.current,
+        wordText: withRule.text,
+        rule: withRule.tajweedRule,
+      });
+
+      if (cueTimerRef.current) {
+        clearTimeout(cueTimerRef.current);
+      }
+      cueTimerRef.current = setTimeout(() => {
+        setActiveTajweedCue(null);
+      }, 2600);
+    },
+    [showTajweedCues]
+  );
+
+  useEffect(() => {
+    if (!showTajweedCues) {
+      setActiveTajweedCue(null);
+      if (cueTimerRef.current) {
+        clearTimeout(cueTimerRef.current);
+        cueTimerRef.current = null;
+      }
+    }
+  }, [showTajweedCues]);
+
   const resetRecitation = useCallback(() => {
     setActiveWordIdx(0);
     activeWordIdxRef.current = 0;
@@ -93,6 +196,11 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
     setIsCompleted(false);
     setSelectedRating(null);
     setFeedback(null);
+    setActiveTajweedCue(null);
+    if (cueTimerRef.current) {
+      clearTimeout(cueTimerRef.current);
+      cueTimerRef.current = null;
+    }
     if (cancelAudioRef.current) {
       cancelAudioRef.current();
       cancelAudioRef.current = null;
@@ -109,6 +217,10 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
 
   useEffect(() => {
     return () => {
+      if (cueTimerRef.current) {
+        clearTimeout(cueTimerRef.current);
+        cueTimerRef.current = null;
+      }
       if (cancelAudioRef.current) {
         cancelAudioRef.current();
         cancelAudioRef.current = null;
@@ -132,6 +244,10 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
       const { newPointer, matchedIds } = alignSpokenTranscript(allWords, pointer, hypotheses);
 
       if (matchedIds.length > 0 && newPointer > pointer) {
+        const matchedSet = new Set(matchedIds);
+        const matchedTokens = allWords.slice(pointer, newPointer).filter((w) => matchedSet.has(w.id));
+        triggerTajweedCue(matchedTokens);
+
         setRevealedWordIds((prev) => {
           const next = new Set(prev);
           matchedIds.forEach((id) => next.add(id));
@@ -160,7 +276,7 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
         }
       }
     },
-    [stageMode, allWords, isCompleted]
+    [stageMode, allWords, isCompleted, triggerTajweedCue]
   );
 
   const {
@@ -295,7 +411,7 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
               <span className="text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0] truncate">
                 {stageMode === 'test' ? 'التسميع الغيبي اللحظي' : 'الاستماع والاستذكار الذاتي'}
               </span>
-              {currentTajweedRule && stageMode === 'test' && currentActiveWord && (
+              {showTajweedCues && currentTajweedRule && stageMode === 'test' && currentActiveWord && (
                 <span className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#52674B]/10 text-[10px] font-bold text-[#3D4D38] dark:text-[#C5D8C1]">
                   <BookOpen className="h-3 w-3 text-[#52674B]" />
                   <span>{currentTajweedRule.ruleName}</span>
@@ -464,11 +580,12 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
         </div>
       )}
 
-      {/* Maximized Scrollable Mushaf Canvas inside Fixed Screen */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-6"
-      >
+      {/* Maximized Scrollable Mushaf Canvas inside Fixed Screen + Gentle Tajweed Visual Cue */}
+      <div className="relative flex-1 min-h-0 w-full flex flex-col">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-6"
+        >
         <div
           className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
             ayahFontSize === 'large'
@@ -568,7 +685,34 @@ export const Stage3RealtimeReveal: React.FC<Stage3RealtimeRevealProps> = ({
               </span>
             );
           })}
+          </div>
         </div>
+
+        {/* Gentle Visual Tajweed Cue Widget (no layout shift, soft transition) */}
+        {showTajweedCues && stageMode === 'test' && activeTajweedCue && (() => {
+          const cueStyle = getTajweedCueStyles(activeTajweedCue.rule.category);
+          return (
+            <div
+              key={activeTajweedCue.id}
+              className={`pointer-events-none absolute bottom-2.5 left-1/2 -translate-x-1/2 z-10 max-w-[92%] sm:max-w-md px-3 py-1.5 rounded-xl border backdrop-blur-md shadow-sm transition-opacity duration-300 flex items-center gap-2 ${cueStyle.container}`}
+              dir="rtl"
+            >
+              <span className={`h-2 w-2 rounded-full shrink-0 ${cueStyle.dot}`} />
+              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-black/5 dark:bg-white/10 shrink-0">
+                {cueStyle.label}
+              </span>
+              <span className="text-[11px] font-bold truncate">
+                {activeTajweedCue.rule.ruleName}
+              </span>
+              <span className="font-quran text-sm font-bold shrink-0 opacity-90">
+                «{activeTajweedCue.wordText}»
+              </span>
+              <span className="hidden sm:inline text-[10px] opacity-80 truncate">
+                · {activeTajweedCue.rule.tip}
+              </span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Compact Stationary Bottom Microphone Bar */}

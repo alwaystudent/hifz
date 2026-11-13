@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StageType,
   SurahMeta,
@@ -10,6 +10,7 @@ import {
   EvaluationRating,
   RiwayahId,
   RoomPassageState,
+  PendingRoomAction,
 } from './types/quran';
 import { SURAHS_LIST, RECITERS, RIWAYAT_LIST, fetchSurahAyahs } from './data/quranData';
 import { Header } from './components/Header';
@@ -20,6 +21,8 @@ import { Stage1SheikRecitation } from './components/Stage1SheikRecitation';
 import { Stage2GradualFading } from './components/Stage2GradualFading';
 import { Stage3RealtimeReveal } from './components/Stage3RealtimeReveal';
 import { PeerTasmeeView } from './components/PeerTasmeeView';
+import { IncomingCallModal } from './components/IncomingCallModal';
+import { useFriendsPresence } from './hooks/useFriendsPresence';
 import { RefreshCw, AlertCircle, X } from 'lucide-react';
 
 function getInitialInviteRoom(): string | null {
@@ -29,13 +32,67 @@ function getInitialInviteRoom(): string | null {
   return code ? code.trim().toUpperCase() : null;
 }
 
+function getInitialAddFriendQuery(): { code: string; name?: string } | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('addFriend');
+  if (!code) return null;
+  return {
+    code: code.trim().toUpperCase(),
+    name: params.get('name')?.trim() || undefined,
+  };
+}
+
 export default function App() {
   const [initialInviteRoomId] = useState<string | null>(getInitialInviteRoom);
-  const [currentStage, setCurrentStage] = useState<StageType>(
-    initialInviteRoomId ? 'peer' : 'stage1'
+  const [initialAddFriend] = useState<{ code: string; name?: string } | null>(
+    getInitialAddFriendQuery
   );
+  const [currentStage, setCurrentStage] = useState<StageType>(
+    initialInviteRoomId || initialAddFriend ? 'peer' : 'stage1'
+  );
+  const [pendingRoomAction, setPendingRoomAction] = useState<PendingRoomAction | null>(null);
   const [autoStartMic, setAutoStartMic] = useState<boolean>(false);
   const [stageNotice, setStageNotice] = useState<string | null>(null);
+
+  // Global Friends & Direct Voice Call Presence (Vercel-compatible PeerJS)
+  const {
+    myCode,
+    myName,
+    setMyName,
+    myFriendInviteUrl,
+    friends,
+    isPresenceReady,
+    incomingCall,
+    outgoingCall,
+    friendNotice,
+    setFriendNotice,
+    addFriendByInvite,
+    removeFriend,
+    sendDirectCallInvite,
+    cancelOutgoingCall,
+    clearOutgoingState,
+    acceptIncomingCall,
+    rejectIncomingCall,
+  } = useFriendsPresence();
+
+  const processedLocalAddRef = useRef(false);
+  const processedHandshakeRef = useRef(false);
+
+  // Process ?addFriend=CODE&name=... invite link immediately locally, then handshake once online
+  useEffect(() => {
+    if (!initialAddFriend) return;
+    if (!processedLocalAddRef.current) {
+      processedLocalAddRef.current = true;
+      const rawSearch = window.location.search;
+      addFriendByInvite(rawSearch || initialAddFriend.code, initialAddFriend.name).then(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+    } else if (isPresenceReady && !processedHandshakeRef.current) {
+      processedHandshakeRef.current = true;
+      addFriendByInvite(initialAddFriend.code, initialAddFriend.name);
+    }
+  }, [initialAddFriend, isPresenceReady, addFriendByInvite]);
 
   // Selected Riwayah (Hafs | Warsh | Qalun)
   const [riwayah, setRiwayah] = useState<RiwayahId>(() => {
@@ -91,15 +148,39 @@ export default function App() {
     return RECITERS.find((r) => r.riwayah === initialRiwayah) || RECITERS[0];
   });
 
-  const [settings, setSettings] = useState<RepetitionSettings>({
-    singleAyahRepeats: 3,
-    linkRepeats: 3,
-    finalReviewRepeats: 3,
-    autoAdvance: true,
-    playbackSpeed: 1.0,
-    pauseBetweenAyahsSec: 2,
-    ayahFontSize: 'small',
+  const [settings, setSettings] = useState<RepetitionSettings>(() => {
+    const defaults: RepetitionSettings = {
+      singleAyahRepeats: 3,
+      linkRepeats: 3,
+      finalReviewRepeats: 3,
+      autoAdvance: true,
+      playbackSpeed: 1.0,
+      pauseBetweenAyahsSec: 2,
+      ayahFontSize: 'small',
+      showTajweedCues: true,
+    };
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('quran_settings');
+        if (saved) {
+          return { ...defaults, ...JSON.parse(saved) };
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return defaults;
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quran_settings', JSON.stringify(settings));
+      } catch {
+        // ignore
+      }
+    }
+  }, [settings]);
 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -337,6 +418,7 @@ export default function App() {
         onOpenRangeSelector={() => setIsRangeModalOpen(true)}
         onOpenReports={() => setIsReportsModalOpen(true)}
         dueReportsCount={dueReportsCount}
+        friendsCount={friends.length}
         surahName={currentSurahMeta.name}
         fromAyah={fromAyah}
         toAyah={toAyah}
@@ -422,6 +504,7 @@ export default function App() {
                 toAyah={toAyah}
                 reciter={selectedReciter}
                 ayahFontSize={settings.ayahFontSize || 'small'}
+                showTajweedCues={settings.showTajweedCues ?? true}
                 autoStartMic={autoStartMic}
                 onBackToStage2={() => handleManualSelectStage('stage2')}
                 onBackToStage1={() => handleManualSelectStage('stage1')}
@@ -440,8 +523,24 @@ export default function App() {
                 riwayah={riwayah}
                 ayahFontSize={settings.ayahFontSize || 'small'}
                 initialInviteRoomId={initialInviteRoomId}
+                pendingRoomAction={pendingRoomAction}
+                onClearPendingRoomAction={() => setPendingRoomAction(null)}
                 onSyncPassageToApp={handleSyncPeerPassage}
                 onExitPeerMode={() => setCurrentStage('stage1')}
+                myCode={myCode}
+                myName={myName}
+                onChangeMyName={setMyName}
+                myFriendInviteUrl={myFriendInviteUrl}
+                friends={friends}
+                isPresenceReady={isPresenceReady}
+                outgoingCall={outgoingCall}
+                friendNotice={friendNotice}
+                onClearFriendNotice={() => setFriendNotice(null)}
+                onAddFriendByInvite={addFriendByInvite}
+                onRemoveFriend={removeFriend}
+                onSendDirectCallInvite={sendDirectCallInvite}
+                onCancelOutgoingCall={cancelOutgoingCall}
+                onClearOutgoingState={clearOutgoingState}
               />
             )}
           </div>
@@ -488,6 +587,27 @@ export default function App() {
         onStartReviewSession={handleStartReviewSession}
         onDeleteReport={handleDeleteReport}
         onClearAllReports={handleClearAllReports}
+      />
+
+      {/* Global Incoming Direct Call Window with Ringtone */}
+      <IncomingCallModal
+        invite={incomingCall}
+        onAccept={async () => {
+          const accepted = await acceptIncomingCall();
+          if (accepted) {
+            handleSyncPeerPassage(accepted.passage);
+            setPendingRoomAction({
+              type: 'join',
+              roomId: accepted.roomId,
+              passage: accepted.passage,
+              friendName: accepted.callerName,
+            });
+            setCurrentStage('peer');
+          }
+        }}
+        onReject={() => {
+          rejectIncomingCall();
+        }}
       />
     </div>
   );

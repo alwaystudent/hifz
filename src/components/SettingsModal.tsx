@@ -1,7 +1,7 @@
 import React from 'react';
 import { AyahFontSize, Reciter, RepetitionSettings, RiwayahId } from '../types/quran';
 import { RECITERS, RIWAYAT_LIST } from '../data/quranData';
-import { Sliders, UserCheck, Clock, Gauge, BookMarked, Type } from 'lucide-react';
+import { Sliders, UserCheck, Clock, Gauge, BookMarked, Type, Sparkles } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -324,6 +324,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Gentle Tajweed Visual Cues Toggle (Stage 3) */}
+          <div className="pt-2 border-t border-[#DDD3BF] dark:border-[#2A3728]">
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D]">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+                  <Sparkles className="h-4 w-4 text-[#52674B] dark:text-[#C5D8C1] shrink-0" />
+                  <span>تنبيهات التجويد البصرية اللطيفة (المرحلة ٣)</span>
+                </div>
+                <p className="text-[11px] text-[#6F7D6C] dark:text-[#9FB19B] mt-0.5">
+                  عرض إشارة بصرية هادئة عند نطق المدود والغنة والقلقلة أثناء التسميع الغيبي.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.showTajweedCues ?? true}
+                onClick={() =>
+                  onUpdateSettings({
+                    ...settings,
+                    showTajweedCues: !(settings.showTajweedCues ?? true),
+                  })
+                }
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors ${
+                  settings.showTajweedCues ?? true
+                    ? 'bg-[#52674B]'
+                    : 'bg-[#CFC5B3] dark:bg-[#2F3F2D]'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition-transform ${
+                    settings.showTajweedCues ?? true ? '-translate-x-5' : '-translate-x-0.5'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>

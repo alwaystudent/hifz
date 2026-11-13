@@ -28,6 +28,7 @@ interface HeaderProps {
   onOpenRangeSelector: () => void;
   onOpenReports: () => void;
   dueReportsCount: number;
+  friendsCount?: number;
   surahName: string;
   fromAyah: number;
   toAyah: number;
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRangeSelector,
   onOpenReports,
   dueReportsCount,
+  friendsCount = 0,
   surahName,
   fromAyah,
   toAyah,
@@ -202,6 +204,17 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Phone className="h-3 w-3 shrink-0" />
             <span className="truncate">التسميع الثنائي</span>
+            {friendsCount > 0 && (
+              <span
+                className={`px-1 rounded-full text-[9px] font-bold ${
+                  currentStage === 'peer'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-[#52674B]/15 text-[#52674B] dark:text-[#C5D8C1]'
+                }`}
+              >
+                {friendsCount}
+              </span>
+            )}
           </button>
         </nav>
       </div>

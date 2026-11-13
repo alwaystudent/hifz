@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AyahFontSize, AyahItem, RiwayahId, RoomPassageState, SurahMeta } from '../types/quran';
+import {
+  AyahFontSize,
+  AyahItem,
+  FriendItem,
+  PendingRoomAction,
+  RiwayahId,
+  RoomPassageState,
+  SurahMeta,
+} from '../types/quran';
 import { SURAHS_LIST, RIWAYAT_LIST } from '../data/quranData';
 import { tokenizeAyah } from '../utils/arabic';
 import { usePeerVoiceCall } from '../hooks/usePeerVoiceCall';
+import { OutgoingCallState } from '../hooks/useFriendsPresence';
 import {
   Phone,
   PhoneOff,
@@ -17,6 +26,9 @@ import {
   Link2,
   BookOpen,
   UserPlus,
+  Trash2,
+  PhoneCall,
+  Radio,
 } from 'lucide-react';
 
 interface PeerTasmeeViewProps {
@@ -27,8 +39,29 @@ interface PeerTasmeeViewProps {
   riwayah: RiwayahId;
   ayahFontSize?: AyahFontSize;
   initialInviteRoomId?: string | null;
+  pendingRoomAction?: PendingRoomAction | null;
+  onClearPendingRoomAction?: () => void;
   onSyncPassageToApp: (passage: RoomPassageState) => void;
   onExitPeerMode: () => void;
+  // Friends & direct call presence props
+  myCode: string;
+  myName: string;
+  onChangeMyName: (name: string) => void;
+  myFriendInviteUrl: string;
+  friends: FriendItem[];
+  isPresenceReady: boolean;
+  outgoingCall: OutgoingCallState;
+  friendNotice: string | null;
+  onClearFriendNotice: () => void;
+  onAddFriendByInvite: (input: string) => Promise<{ added: boolean; synced: boolean; code?: string }>;
+  onRemoveFriend: (code: string) => void;
+  onSendDirectCallInvite: (
+    friend: FriendItem,
+    roomId: string,
+    passage: RoomPassageState
+  ) => Promise<boolean>;
+  onCancelOutgoingCall: () => Promise<void>;
+  onClearOutgoingState: () => void;
 }
 
 function extractRoomCode(input: string): string {
@@ -56,19 +89,31 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
   riwayah,
   ayahFontSize = 'small',
   initialInviteRoomId,
+  pendingRoomAction,
+  onClearPendingRoomAction,
   onSyncPassageToApp,
   onExitPeerMode,
+  myCode,
+  myName,
+  onChangeMyName,
+  myFriendInviteUrl,
+  friends,
+  isPresenceReady,
+  outgoingCall,
+  friendNotice,
+  onClearFriendNotice,
+  onAddFriendByInvite,
+  onRemoveFriend,
+  onSendDirectCallInvite,
+  onCancelOutgoingCall,
+  onClearOutgoingState,
 }) => {
-  const [displayName, setDisplayName] = useState<string>(() => {
-    try {
-      return localStorage.getItem('quran_peer_name') || 'طالب علم';
-    } catch {
-      return 'طالب علم';
-    }
-  });
   const [joinCodeInput, setJoinCodeInput] = useState<string>(initialInviteRoomId || '');
+  const [friendInviteInput, setFriendInviteInput] = useState<string>('');
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [copiedFriendLink, setCopiedFriendLink] = useState(false);
   const [hideTextForReciter, setHideTextForReciter] = useState(true);
+  const [callingFriendCode, setCallingFriendCode] = useState<string | null>(null);
 
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -113,18 +158,33 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
     }
   }, [remoteStream]);
 
-  // Persist display name
+  // Auto-join room when user accepts an incoming call anywhere in the app
   useEffect(() => {
-    try {
-      if (displayName.trim()) {
-        localStorage.setItem('quran_peer_name', displayName.trim());
+    if (!pendingRoomAction) return;
+    const action = pendingRoomAction;
+    onClearPendingRoomAction?.();
+    if (action.type === 'join' && action.roomId) {
+      if (action.passage) {
+        onSyncPassageToApp(action.passage);
       }
-    } catch {
-      // ignore
+      joinRoom(action.roomId, myName, action.passage);
     }
-  }, [displayName]);
+  }, [pendingRoomAction, onClearPendingRoomAction, onSyncPassageToApp, joinRoom, myName]);
 
-  // Keep local selected Surah/Range in sync when active in a room
+  // Stop outgoing ringback tone automatically once peer connects or call ends
+  useEffect(() => {
+    if (callState === 'connected' && outgoingCall.phase !== 'idle') {
+      onClearOutgoingState();
+    }
+  }, [callState, outgoingCall.phase, onClearOutgoingState]);
+
+  // Automatically hang up waiting room if friend explicitly rejected the call
+  useEffect(() => {
+    if (outgoingCall.phase === 'rejected') {
+      leaveCall();
+    }
+  }, [outgoingCall.phase, leaveCall]);
+
   const activeSurahMeta =
     SURAHS_LIST.find((s) => s.number === passage.surahNumber) || surah;
 
@@ -154,8 +214,26 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
     });
   };
 
+  const handleCopyFriendLink = () => {
+    if (!myFriendInviteUrl) return;
+    navigator.clipboard?.writeText(myFriendInviteUrl).then(() => {
+      setCopiedFriendLink(true);
+      setTimeout(() => setCopiedFriendLink(false), 2000);
+    });
+  };
+
+  const handleAddFriendSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!friendInviteInput.trim()) return;
+    const res = await onAddFriendByInvite(friendInviteInput);
+    if (res.added) {
+      setFriendInviteInput('');
+    }
+  };
+
   const handleCreateRoom = async () => {
-    const created = await createAndJoinRoom(displayName, {
+    onClearOutgoingState();
+    const created = await createAndJoinRoom(myName, {
       surahNumber: surah.number,
       fromAyah,
       toAyah,
@@ -167,12 +245,28 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
     }
   };
 
+  const handleDirectCallFriend = async (friend: FriendItem) => {
+    setCallingFriendCode(friend.code);
+    const currentPassage: RoomPassageState = {
+      surahNumber: surah.number,
+      fromAyah,
+      toAyah,
+      riwayah,
+    };
+    const created = await createAndJoinRoom(myName, currentPassage);
+    setCallingFriendCode(null);
+    if (created) {
+      await onSendDirectCallInvite(friend, created, currentPassage);
+    }
+  };
+
   const handleJoinRoom = async () => {
+    onClearOutgoingState();
     const code = extractRoomCode(joinCodeInput);
     if (!code) return;
     const nextUrl = `${window.location.pathname}?room=${code}`;
     window.history.replaceState({}, '', nextUrl);
-    await joinRoom(code, displayName, {
+    await joinRoom(code, myName, {
       surahNumber: surah.number,
       fromAyah,
       toAyah,
@@ -180,7 +274,8 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
     });
   };
 
-  const handleHangup = () => {
+  const handleHangup = async () => {
+    await onCancelOutgoingCall();
     leaveCall();
     window.history.replaceState({}, '', window.location.pathname);
   };
@@ -191,6 +286,40 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
     <div className="w-full h-full min-h-0 flex flex-col gap-1.5">
       {/* Hidden WebRTC Remote Audio Player */}
       <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+
+      {/* Outgoing Call Ringing Window */}
+      {outgoingCall.phase === 'ringing' && outgoingCall.targetFriend && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-xs rounded-2xl bg-[#F9F6EE] dark:bg-[#162015] border-2 border-[#52674B] shadow-2xl p-5 text-center space-y-3.5">
+            <div className="relative mx-auto flex h-14 w-14 items-center justify-center">
+              <span className="absolute inset-0 rounded-full bg-[#52674B]/25 animate-ping" />
+              <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#52674B] text-white">
+                <PhoneCall className="h-5 w-5" />
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+                جاري الاتصال بـ {outgoingCall.targetFriend.name}
+              </h3>
+              <p className="text-xs text-[#6F7D6C] dark:text-[#9FB19B] mt-0.5">
+                بانتظار رد الصديق وبدء المكالمة الصوتية...
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleHangup}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl bg-[#8C463F] hover:bg-[#7A3B35] text-white text-xs font-bold transition-colors"
+            >
+              <PhoneOff className="h-4 w-4" />
+              <span>إلغاء المكالمة</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Compact Top Call & Room Control Bar */}
       <div className="shrink-0 w-full rounded-xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] px-2.5 py-1.5 shadow-xs">
@@ -211,8 +340,20 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
 
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
               <h2 className="text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0] truncate">
-                التسميع الثنائي
+                التسميع الثنائي والأصدقاء
               </h2>
+              {!inCall && (
+                <span
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                    isPresenceReady
+                      ? 'bg-[#52674B]/15 text-[#3D4D38] dark:text-[#C5D8C1]'
+                      : 'bg-[#ECE4D4] text-[#6F7D6C] dark:bg-[#202B1E]'
+                  }`}
+                >
+                  <Radio className="h-2.5 w-2.5" />
+                  <span>{isPresenceReady ? 'متصل بالشبكة' : 'جاري التهيئة'}</span>
+                </span>
+              )}
               {roomId && inCall && (
                 <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#ECE4D4] dark:bg-[#202B1E] text-[#52674B] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D]">
                   {roomId}
@@ -285,8 +426,8 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
             )}
 
             <button
-              onClick={() => {
-                handleHangup();
+              onClick={async () => {
+                await handleHangup();
                 onExitPeerMode();
               }}
               className="px-2 py-1 text-[11px] font-semibold rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE4D4] dark:hover:bg-[#202B1E]"
@@ -414,72 +555,184 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
 
       {/* Lobby Setup View OR Live Shared Mushaf View */}
       {!inCall ? (
-        <div className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-4 sm:p-6 flex items-center justify-center">
-          <div className="w-full max-w-xl space-y-5">
-            {errorMessage && (
-              <div className="p-3 rounded-xl bg-[#8C524B]/15 border border-[#8C524B]/30 text-xs text-[#6B2D26] dark:text-[#F3C5C1] text-center font-semibold">
-                {errorMessage}
+        <div className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5">
+          <div className="w-full max-w-3xl mx-auto space-y-3">
+            {/* Notices */}
+            {(errorMessage || friendNotice || (outgoingCall.phase === 'rejected' && outgoingCall.message)) && (
+              <div className="p-2.5 rounded-xl bg-[#ECE4D4] dark:bg-[#1D271B] border border-[#D5CABB] dark:border-[#2F3F2D] text-xs text-[#2B3527] dark:text-[#F1F6F0] flex items-center justify-between gap-2">
+                <span className="font-semibold">
+                  {errorMessage || outgoingCall.message || friendNotice}
+                </span>
+                <button
+                  onClick={() => {
+                    onClearFriendNotice();
+                    if (outgoingCall.phase === 'rejected') onClearOutgoingState();
+                  }}
+                  className="text-[11px] font-bold text-[#52674B] dark:text-[#C5D8C1] px-1.5"
+                >
+                  ✕
+                </button>
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
-                اسمك في الجلسة الصوتية:
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="مثال: أحمد"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-sm text-[#2B3527] dark:text-[#F1F6F0] focus:outline-none focus:ring-2 focus:ring-[#52674B]"
-              />
+            {/* Top Row: My Friend Card + Add Friend by Link */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* My Friend Profile & Share Link */}
+              <div className="p-3.5 rounded-xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+                    <UserPlus className="h-4 w-4 text-[#52674B]" />
+                    <span>بطاقتي ورابط الدعوة</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#ECE4D4] dark:bg-[#202B1E] text-[#52674B] dark:text-[#C5D8C1]">
+                    {myCode}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={myName}
+                    onChange={(e) => onChangeMyName(e.target.value)}
+                    placeholder="اسمك الذي يظهر للأصدقاء"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-xs text-[#2B3527] dark:text-[#F1F6F0] focus:outline-none focus:ring-1 focus:ring-[#52674B]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyFriendLink}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#52674B] hover:bg-[#43553D] text-white text-xs font-bold shrink-0 transition-colors"
+                  >
+                    {copiedFriendLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedFriendLink ? 'تم النسخ' : 'نسخ رابط صداقتي'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Add Friend via Invite Link or Code */}
+              <form
+                onSubmit={handleAddFriendSubmit}
+                className="p-3.5 rounded-xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] space-y-2.5"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+                  <Link2 className="h-4 w-4 text-[#52674B]" />
+                  <span>إضافة صديق برابط دعوة أو رمز</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={friendInviteInput}
+                    onChange={(e) => setFriendInviteInput(e.target.value)}
+                    placeholder="الصق رابط الصديق أو رمزه (RT...)"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-xs font-mono text-[#2B3527] dark:text-[#F1F6F0] focus:outline-none focus:ring-1 focus:ring-[#52674B]"
+                    dir="ltr"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!friendInviteInput.trim()}
+                    className="px-3 py-1.5 rounded-lg bg-[#3D4D38] hover:bg-[#2E3B2A] text-white text-xs font-bold shrink-0 disabled:opacity-40 transition-colors"
+                  >
+                    إضافة
+                  </button>
+                </div>
+              </form>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Create Invite Link */}
-              <div className="p-4 rounded-2xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-bold text-[#2B3527] dark:text-[#F1F6F0]">
-                    <Link2 className="h-4 w-4 text-[#52674B]" />
-                    <span>إنشاء رابط دعوة جديد</span>
+            {/* Friends List with Direct Voice Call */}
+            <div className="p-3.5 rounded-xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+                  <Users className="h-4 w-4 text-[#52674B]" />
+                  <span>قائمة الأصدقاء ({friends.length})</span>
+                </div>
+                <span className="text-[10px] text-[#6F7D6C] dark:text-[#9FB19B]">
+                  اتصال مباشر مع تنبيه صوتي ونافذة رد عند الصديق
+                </span>
+              </div>
+
+              {friends.length === 0 ? (
+                <p className="text-xs text-[#6F7D6C] dark:text-[#9FB19B] py-3 text-center">
+                  لا يوجد أصدقاء مضافون بعد. شارك «رابط صداقتي» أو أضف رابط صديقك أعلاه.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {friends.map((friend) => {
+                    const isCallingThis = callingFriendCode === friend.code;
+                    return (
+                      <div
+                        key={friend.code}
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-[#111710] border border-[#DDD3BF] dark:border-[#2F3F2D]"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0] truncate">
+                            {friend.name}
+                          </div>
+                          <div className="text-[10px] font-mono text-[#6F7D6C] dark:text-[#9FB19B]">
+                            {friend.code}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleDirectCallFriend(friend)}
+                            disabled={callState === 'connecting' || isCallingThis}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#52674B] hover:bg-[#43553D] text-white text-[11px] font-bold transition-colors disabled:opacity-50"
+                          >
+                            <PhoneCall className="h-3.5 w-3.5" />
+                            <span>{isCallingThis ? 'جاري...' : 'اتصال'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveFriend(friend.code)}
+                            className="p-1.5 rounded-lg text-[#8C463F] hover:bg-[#8C463F]/10 transition-colors"
+                            title="حذف الصديق"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Instant Room Link / Join by Code (Works standalone as well) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+                    غرفة فورية برابط مؤقت
                   </div>
-                  <p className="text-xs text-[#6F7D6C] dark:text-[#9FB19B] mt-1">
-                    افتح غرفة صوتية فورية واحصل على رابط لدعوة شريكك للتسميع والسرد.
-                  </p>
+                  <div className="text-[10px] text-[#6F7D6C] dark:text-[#9FB19B] truncate">
+                    أنشئ غرفة وانسخ الرابط لأي مشارك
+                  </div>
                 </div>
                 <button
                   onClick={handleCreateRoom}
                   disabled={callState === 'connecting'}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#52674B] hover:bg-[#43553D] text-white text-xs font-bold shadow-sm transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-[#52674B] hover:bg-[#43553D] text-white text-[11px] font-bold shrink-0 disabled:opacity-50"
                 >
-                  <Phone className="h-4 w-4" />
-                  <span>{callState === 'connecting' ? 'جاري فتح الغرفة...' : 'بدء غرفة صوتية وإنشاء رابط'}</span>
+                  <Phone className="h-3.5 w-3.5" />
+                  <span>{callState === 'connecting' ? 'جاري...' : 'إنشاء غرفة'}</span>
                 </button>
               </div>
 
-              {/* Join via Invite Link or Code */}
-              <div className="p-4 rounded-2xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-bold text-[#2B3527] dark:text-[#F1F6F0]">
-                    <UserPlus className="h-4 w-4 text-[#52674B]" />
-                    <span>الدخول عبر رابط أو رمز دعوة</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={joinCodeInput}
-                    onChange={(e) => setJoinCodeInput(e.target.value)}
-                    placeholder="أدخل رمز الغرفة أو الصق الرابط"
-                    className="mt-2 w-full px-3 py-2 rounded-xl bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-xs font-mono text-[#2B3527] dark:text-[#F1F6F0]"
-                    dir="ltr"
-                  />
-                </div>
+              <div className="p-3 rounded-xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] flex items-center gap-2">
+                <input
+                  type="text"
+                  value={joinCodeInput}
+                  onChange={(e) => setJoinCodeInput(e.target.value)}
+                  placeholder="أدخل رمز الغرفة أو الرابط"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-xs font-mono text-[#2B3527] dark:text-[#F1F6F0]"
+                  dir="ltr"
+                />
                 <button
                   onClick={handleJoinRoom}
                   disabled={!joinCodeInput.trim() || callState === 'connecting'}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#3D4D38] hover:bg-[#2E3B2A] text-white text-xs font-bold shadow-sm transition-colors disabled:opacity-40"
+                  className="flex items-center gap-1 py-1.5 px-3 rounded-lg bg-[#3D4D38] hover:bg-[#2E3B2A] text-white text-[11px] font-bold shrink-0 disabled:opacity-40"
                 >
-                  <Phone className="h-4 w-4" />
-                  <span>انضمام للمكالمة الصوتية</span>
+                  <Phone className="h-3.5 w-3.5" />
+                  <span>دخول</span>
                 </button>
               </div>
             </div>
@@ -488,21 +741,33 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
       ) : (
         /* Maximized Shared Synchronized Mushaf during Live Voice Call */
         <div className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-7">
+          {outgoingCall.phase === 'offline' && outgoingCall.message && (
+            <div className="mb-3 p-2.5 rounded-xl bg-[#FBF6EA] dark:bg-[#232015] border border-[#D8BE82]/60 text-xs text-[#7A5B18] dark:text-[#EAD092] flex items-center justify-between gap-2">
+              <span>{outgoingCall.message}</span>
+              <button
+                onClick={onClearOutgoingState}
+                className="text-xs font-bold px-1.5"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {callState === 'waiting_peer' && inviteUrl && (
-            <div className="mb-4 p-3 rounded-2xl bg-[#ECE4D4]/80 dark:bg-[#1D271B] border border-[#D5CABB] dark:border-[#2F3F2D] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+            <div className="mb-3 p-2.5 rounded-xl bg-[#ECE4D4]/80 dark:bg-[#1D271B] border border-[#D5CABB] dark:border-[#2F3F2D] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
               <span className="font-semibold text-[#2B3527] dark:text-[#F1F6F0]">
-                شارك هذا الرابط مع شريكك للانضمام إليك مباشرة:
+                رابط الغرفة للمشاركة المباشرة:
               </span>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <input
                   readOnly
                   value={inviteUrl}
-                  className="flex-1 sm:w-72 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] font-mono text-[11px]"
+                  className="flex-1 sm:w-72 px-2.5 py-1 rounded-lg bg-white dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] font-mono text-[11px]"
                   dir="ltr"
                 />
                 <button
                   onClick={handleCopyInvite}
-                  className="px-3 py-1.5 rounded-lg bg-[#52674B] text-white font-bold shrink-0"
+                  className="px-3 py-1 rounded-lg bg-[#52674B] text-white font-bold shrink-0"
                 >
                   {copiedInvite ? 'تم النسخ ✓' : 'نسخ'}
                 </button>
