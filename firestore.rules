@@ -107,6 +107,7 @@ service cloud.firestore {
         && data.surahNumber is number && data.surahNumber >= 1 && data.surahNumber <= 114
         && data.fromAyah is number && data.fromAyah >= 1 && data.fromAyah <= 286
         && data.toAyah is number && data.toAyah >= 1 && data.toAyah <= 286
+        && data.fromAyah <= data.toAyah
         && data.riwayah in ['hafs', 'warsh', 'qalun']
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
@@ -169,7 +170,8 @@ service cloud.firestore {
         && incoming().ownerUid == request.auth.uid
         && incoming().code == code
         && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
+        && incoming().updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.friendCode == code;
       allow update: if isVerifiedUser()
         && isValidId(code)
         && existing().ownerUid == request.auth.uid
@@ -215,7 +217,9 @@ service cloud.firestore {
         && incoming().status == 'pending'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time
-        && exists(/databases/$(database)/documents/profiles/$(incoming().toUid));
+        && exists(/databases/$(database)/documents/profiles/$(incoming().toUid))
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(incoming().toUid))
+        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.friendCode == incoming().fromCode;
       allow update: if isVerifiedUser()
         && isValidId(requestId)
         && isValidFriendRequest(incoming())
@@ -249,7 +253,9 @@ service cloud.firestore {
         && incoming().status == 'ringing'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time
-        && exists(/databases/$(database)/documents/profiles/$(incoming().calleeUid));
+        && exists(/databases/$(database)/documents/profiles/$(incoming().calleeUid))
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(incoming().calleeUid))
+        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.friendCode == incoming().callerCode;
       allow update: if isVerifiedUser()
         && isValidId(callId)
         && isValidCall(incoming())
