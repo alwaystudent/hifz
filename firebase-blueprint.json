@@ -1,0 +1,283 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public membership profile for a registered user without PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "friendCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "friendCode", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Private PII for the authenticated member (owner-only access).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "createdAt", "updatedAt"]
+    },
+    "InviteCode": {
+      "title": "InviteCode",
+      "description": "Lookup record mapping a unique friend invite code to a member profile.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["code", "ownerUid", "displayName", "createdAt", "updatedAt"]
+    },
+    "FriendEntry": {
+      "title": "FriendEntry",
+      "description": "A saved friend belonging to an authenticated member.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "friendUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "friendCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "friendName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerUid", "friendUid", "friendCode", "friendName", "createdAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Mutual friend connection request sent after opening an invite link.",
+      "type": "object",
+      "properties": {
+        "fromUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fromName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "fromCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "toUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["fromUid", "fromName", "fromCode", "toUid", "status", "createdAt", "updatedAt"]
+    },
+    "DirectCall": {
+      "title": "DirectCall",
+      "description": "Real-time 2-party voice call signaling document between friends.",
+      "type": "object",
+      "properties": {
+        "callerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "callerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "callerCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "calleeUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "calleeName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "roomId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ringing", "accepted", "rejected", "cancelled", "ended"]
+        },
+        "surahNumber": {
+          "type": "number"
+        },
+        "fromAyah": {
+          "type": "number"
+        },
+        "toAyah": {
+          "type": "number"
+        },
+        "riwayah": {
+          "type": "string",
+          "enum": ["hafs", "warsh", "qalun"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "callerUid",
+        "callerName",
+        "callerCode",
+        "calleeUid",
+        "calleeName",
+        "roomId",
+        "status",
+        "surahNumber",
+        "fromAyah",
+        "toAyah",
+        "riwayah",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public membership profile keyed by Firebase Auth UID"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Owner-only private user PII (docId = info)"
+    },
+    "/inviteCodes/{code}": {
+      "schema": { "$ref": "#/entities/InviteCode" },
+      "description": "Friend invite code lookup table"
+    },
+    "/users/{userId}/friends/{friendUid}": {
+      "schema": { "$ref": "#/entities/FriendEntry" },
+      "description": "User's private saved friends subcollection"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend connection requests between authenticated members"
+    },
+    "/calls/{callId}": {
+      "schema": { "$ref": "#/entities/DirectCall" },
+      "description": "Real-time direct call invitations and ringing state between friends"
+    }
+  }
+}

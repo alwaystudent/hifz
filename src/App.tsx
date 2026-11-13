@@ -22,6 +22,8 @@ import { Stage2GradualFading } from './components/Stage2GradualFading';
 import { Stage3RealtimeReveal } from './components/Stage3RealtimeReveal';
 import { PeerTasmeeView } from './components/PeerTasmeeView';
 import { IncomingCallModal } from './components/IncomingCallModal';
+import { AuthModal } from './components/AuthModal';
+import { useAuthMember } from './hooks/useAuthMember';
 import { useFriendsPresence } from './hooks/useFriendsPresence';
 import { RefreshCw, AlertCircle, X } from 'lucide-react';
 
@@ -55,16 +57,42 @@ export default function App() {
   const [autoStartMic, setAutoStartMic] = useState<boolean>(false);
   const [stageNotice, setStageNotice] = useState<string | null>(null);
 
-  // Global Friends & Direct Voice Call Presence (Vercel-compatible PeerJS)
+  // Membership & Google Auth state
+  const {
+    user,
+    memberProfile,
+    isAuthenticated,
+    isAuthReady,
+    isLoadingProfile,
+    authError,
+    setAuthError,
+    signInOrRegisterWithGoogle,
+    updateMemberDisplayName,
+    logout,
+  } = useAuthMember();
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
+
+  const openAuthModal = useCallback(
+    (reason?: string) => {
+      setAuthError(null);
+      setAuthPromptReason(reason || null);
+      setIsAuthModalOpen(true);
+    },
+    [setAuthError]
+  );
+
+  // Global Friends & Direct Voice Call Presence (Firebase Auth + Firestore + PeerJS)
   const {
     myCode,
     myName,
-    setMyName,
     myFriendInviteUrl,
     friends,
     isPresenceReady,
     incomingCall,
     outgoingCall,
+    activeCallId,
     friendNotice,
     setFriendNotice,
     addFriendByInvite,
@@ -74,25 +102,37 @@ export default function App() {
     clearOutgoingState,
     acceptIncomingCall,
     rejectIncomingCall,
-  } = useFriendsPresence();
+    endActiveCall,
+  } = useFriendsPresence({
+    user,
+    memberProfile,
+    isAuthReady,
+    onRequireAuth: openAuthModal,
+  });
 
-  const processedLocalAddRef = useRef(false);
-  const processedHandshakeRef = useRef(false);
+  const promptedInviteAuthRef = useRef(false);
+  const processedAddFriendRef = useRef(false);
 
-  // Process ?addFriend=CODE&name=... invite link immediately locally, then handshake once online
+  // Process ?addFriend=CODE&name=... ONLY after user is authenticated
   useEffect(() => {
-    if (!initialAddFriend) return;
-    if (!processedLocalAddRef.current) {
-      processedLocalAddRef.current = true;
-      const rawSearch = window.location.search;
-      addFriendByInvite(rawSearch || initialAddFriend.code, initialAddFriend.name).then(() => {
-        window.history.replaceState({}, '', window.location.pathname);
-      });
-    } else if (isPresenceReady && !processedHandshakeRef.current) {
-      processedHandshakeRef.current = true;
-      addFriendByInvite(initialAddFriend.code, initialAddFriend.name);
+    if (!initialAddFriend || !isAuthReady || processedAddFriendRef.current) return;
+
+    if (!isAuthenticated) {
+      if (!promptedInviteAuthRef.current) {
+        promptedInviteAuthRef.current = true;
+        openAuthModal(
+          `لإضافة «${initialAddFriend.name || 'صديقك'}» إلى قائمة أصدقائك، يرجى تسجيل الدخول أو إنشاء عضوية أولاً.`
+        );
+      }
+      return;
     }
-  }, [initialAddFriend, isPresenceReady, addFriendByInvite]);
+
+    processedAddFriendRef.current = true;
+    const rawSearch = window.location.search;
+    addFriendByInvite(rawSearch || initialAddFriend.code).then(() => {
+      window.history.replaceState({}, '', window.location.pathname);
+    });
+  }, [initialAddFriend, isAuthReady, isAuthenticated, openAuthModal, addFriendByInvite]);
 
   // Selected Riwayah (Hafs | Warsh | Qalun)
   const [riwayah, setRiwayah] = useState<RiwayahId>(() => {
@@ -419,6 +459,8 @@ export default function App() {
         onOpenReports={() => setIsReportsModalOpen(true)}
         dueReportsCount={dueReportsCount}
         friendsCount={friends.length}
+        memberDisplayName={memberProfile?.displayName || null}
+        onOpenAuth={() => openAuthModal()}
         surahName={currentSurahMeta.name}
         fromAyah={fromAyah}
         toAyah={toAyah}
@@ -527,13 +569,15 @@ export default function App() {
                 onClearPendingRoomAction={() => setPendingRoomAction(null)}
                 onSyncPassageToApp={handleSyncPeerPassage}
                 onExitPeerMode={() => setCurrentStage('stage1')}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={openAuthModal}
                 myCode={myCode}
                 myName={myName}
-                onChangeMyName={setMyName}
                 myFriendInviteUrl={myFriendInviteUrl}
                 friends={friends}
                 isPresenceReady={isPresenceReady}
                 outgoingCall={outgoingCall}
+                activeCallId={activeCallId}
                 friendNotice={friendNotice}
                 onClearFriendNotice={() => setFriendNotice(null)}
                 onAddFriendByInvite={addFriendByInvite}
@@ -541,6 +585,7 @@ export default function App() {
                 onSendDirectCallInvite={sendDirectCallInvite}
                 onCancelOutgoingCall={cancelOutgoingCall}
                 onClearOutgoingState={clearOutgoingState}
+                onEndActiveCall={endActiveCall}
               />
             )}
           </div>
@@ -589,6 +634,24 @@ export default function App() {
         onClearAllReports={handleClearAllReports}
       />
 
+      {/* Membership Registration / Account Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthPromptReason(null);
+        }}
+        isAuthenticated={isAuthenticated}
+        isLoadingProfile={isLoadingProfile}
+        memberProfile={memberProfile}
+        authError={authError}
+        promptReason={authPromptReason}
+        myFriendInviteUrl={myFriendInviteUrl}
+        onSignInWithGoogle={signInOrRegisterWithGoogle}
+        onUpdateDisplayName={updateMemberDisplayName}
+        onLogout={logout}
+      />
+
       {/* Global Incoming Direct Call Window with Ringtone */}
       <IncomingCallModal
         invite={incomingCall}
@@ -599,6 +662,7 @@ export default function App() {
             setPendingRoomAction({
               type: 'join',
               roomId: accepted.roomId,
+              callId: accepted.callId,
               passage: accepted.passage,
               friendName: accepted.callerName,
             });

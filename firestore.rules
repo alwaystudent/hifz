@@ -1,0 +1,278 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'friendCode', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'friendCode', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.friendCode is string && data.friendCode.size() >= 6 && data.friendCode.size() <= 16
+        && data.friendCode.matches('^[A-Z0-9]+$')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateInfo(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInviteCode(data) {
+      return data.keys().hasAll(['code', 'ownerUid', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['code', 'ownerUid', 'displayName', 'createdAt', 'updatedAt'])
+        && data.code is string && data.code.size() >= 6 && data.code.size() <= 16
+        && data.code.matches('^[A-Z0-9]+$')
+        && isValidId(data.ownerUid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriend(data) {
+      return data.keys().hasAll(['ownerUid', 'friendUid', 'friendCode', 'friendName', 'createdAt'])
+        && data.keys().hasOnly(['ownerUid', 'friendUid', 'friendCode', 'friendName', 'createdAt'])
+        && isValidId(data.ownerUid)
+        && isValidId(data.friendUid)
+        && data.friendCode is string && data.friendCode.size() >= 6 && data.friendCode.size() <= 16
+        && data.friendCode.matches('^[A-Z0-9]+$')
+        && data.friendName is string && data.friendName.size() >= 1 && data.friendName.size() <= 80
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasAll(['fromUid', 'fromName', 'fromCode', 'toUid', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['fromUid', 'fromName', 'fromCode', 'toUid', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.fromUid)
+        && data.fromName is string && data.fromName.size() >= 1 && data.fromName.size() <= 80
+        && data.fromCode is string && data.fromCode.size() >= 6 && data.fromCode.size() <= 16
+        && data.fromCode.matches('^[A-Z0-9]+$')
+        && isValidId(data.toUid)
+        && data.status in ['pending', 'accepted', 'rejected']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCall(data) {
+      return data.keys().hasAll([
+          'callerUid', 'callerName', 'callerCode',
+          'calleeUid', 'calleeName', 'roomId', 'status',
+          'surahNumber', 'fromAyah', 'toAyah', 'riwayah',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'callerUid', 'callerName', 'callerCode',
+          'calleeUid', 'calleeName', 'roomId', 'status',
+          'surahNumber', 'fromAyah', 'toAyah', 'riwayah',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.callerUid)
+        && data.callerName is string && data.callerName.size() >= 1 && data.callerName.size() <= 80
+        && data.callerCode is string && data.callerCode.size() >= 6 && data.callerCode.size() <= 16
+        && data.callerCode.matches('^[A-Z0-9]+$')
+        && isValidId(data.calleeUid)
+        && data.calleeName is string && data.calleeName.size() >= 1 && data.calleeName.size() <= 80
+        && data.roomId is string && data.roomId.size() >= 4 && data.roomId.size() <= 16
+        && data.roomId.matches('^[A-Z0-9]+$')
+        && data.status in ['ringing', 'accepted', 'rejected', 'cancelled', 'ended']
+        && data.surahNumber is number && data.surahNumber >= 1 && data.surahNumber <= 114
+        && data.fromAyah is number && data.fromAyah >= 1 && data.fromAyah <= 286
+        && data.toAyah is number && data.toAyah >= 1 && data.toAyah <= 286
+        && data.riwayah in ['hafs', 'warsh', 'qalun']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Public member profile (no PII)
+    match /profiles/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId);
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidProfile(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().friendCode == existing().friendCode
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Owner-only private PII
+    match /users/{userId}/private/{docId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && docId == 'info' && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && docId == 'info'
+        && request.auth.uid == userId
+        && isValidPrivateInfo(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && docId == 'info'
+        && request.auth.uid == userId
+        && isValidPrivateInfo(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Friend invite codes lookup
+    match /inviteCodes/{code} {
+      allow get: if isVerifiedUser() && isValidId(code);
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(code)
+        && isValidInviteCode(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().code == code
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(code)
+        && existing().ownerUid == request.auth.uid
+        && isValidInviteCode(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().code == existing().code
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Member's private friends list
+    match /users/{userId}/friends/{friendUid} {
+      allow get: if isVerifiedUser() && isValidId(userId) && isValidId(friendUid) && request.auth.uid == userId;
+      allow list: if isVerifiedUser() && request.auth.uid == userId && resource.data.ownerUid == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidId(friendUid)
+        && request.auth.uid == userId
+        && friendUid != userId
+        && isValidFriend(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().friendUid == friendUid
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/profiles/$(friendUid));
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(userId) && isValidId(friendUid) && request.auth.uid == userId;
+    }
+
+    // Mutual friend connection requests
+    match /friendRequests/{requestId} {
+      allow get: if isVerifiedUser()
+        && isValidId(requestId)
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+      allow list: if isVerifiedUser()
+        && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidFriendRequest(incoming())
+        && incoming().fromUid == request.auth.uid
+        && incoming().toUid != request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/profiles/$(incoming().toUid));
+      allow update: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidFriendRequest(incoming())
+        && existing().status == 'pending'
+        && request.auth.uid == existing().toUid
+        && (incoming().status == 'accepted' || incoming().status == 'rejected')
+        && incoming().fromUid == existing().fromUid
+        && incoming().toUid == existing().toUid
+        && incoming().fromName == existing().fromName
+        && incoming().fromCode == existing().fromCode
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isVerifiedUser()
+        && isValidId(requestId)
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+    }
+
+    // Real-time 2-party voice call signaling between friends
+    match /calls/{callId} {
+      allow get: if isVerifiedUser()
+        && isValidId(callId)
+        && (existing().callerUid == request.auth.uid || existing().calleeUid == request.auth.uid);
+      allow list: if isVerifiedUser()
+        && (resource.data.calleeUid == request.auth.uid || resource.data.callerUid == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(callId)
+        && isValidCall(incoming())
+        && incoming().callerUid == request.auth.uid
+        && incoming().calleeUid != request.auth.uid
+        && incoming().status == 'ringing'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/profiles/$(incoming().calleeUid));
+      allow update: if isVerifiedUser()
+        && isValidId(callId)
+        && isValidCall(incoming())
+        && (existing().status == 'ringing' || existing().status == 'accepted')
+        && incoming().callerUid == existing().callerUid
+        && incoming().calleeUid == existing().calleeUid
+        && incoming().callerName == existing().callerName
+        && incoming().callerCode == existing().callerCode
+        && incoming().calleeName == existing().calleeName
+        && incoming().roomId == existing().roomId
+        && incoming().surahNumber == existing().surahNumber
+        && incoming().fromAyah == existing().fromAyah
+        && incoming().toAyah == existing().toAyah
+        && incoming().riwayah == existing().riwayah
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && (
+          (existing().status == 'ringing' && request.auth.uid == existing().calleeUid && (incoming().status == 'accepted' || incoming().status == 'rejected'))
+          || (existing().status == 'ringing' && request.auth.uid == existing().callerUid && incoming().status == 'cancelled')
+          || (existing().status == 'accepted' && (request.auth.uid == existing().callerUid || request.auth.uid == existing().calleeUid) && incoming().status == 'ended')
+        );
+      allow delete: if false;
+    }
+  }
+}

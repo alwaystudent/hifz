@@ -56,22 +56,33 @@ export interface RoomPassageState {
 }
 
 export interface FriendItem {
+  uid: string;
   code: string;
   name: string;
   addedAt: number;
 }
 
 export interface DirectCallInvite {
+  callId: string;
   roomId: string;
+  callerUid: string;
   callerCode: string;
   callerName: string;
   passage: RoomPassageState;
   receivedAt: number;
 }
 
+export interface MemberProfile {
+  uid: string;
+  displayName: string;
+  friendCode: string;
+  email?: string | null;
+}
+
 export interface PendingRoomAction {
   type: 'join';
   roomId: string;
+  callId?: string;
   passage?: RoomPassageState;
   friendName?: string;
 }

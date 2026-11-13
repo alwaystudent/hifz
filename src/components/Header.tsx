@@ -14,6 +14,8 @@ import {
   Lock,
   CheckCircle2,
   Phone,
+  UserCheck,
+  UserPlus,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -29,6 +31,8 @@ interface HeaderProps {
   onOpenReports: () => void;
   dueReportsCount: number;
   friendsCount?: number;
+  memberDisplayName?: string | null;
+  onOpenAuth: () => void;
   surahName: string;
   fromAyah: number;
   toAyah: number;
@@ -47,6 +51,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenReports,
   dueReportsCount,
   friendsCount = 0,
+  memberDisplayName,
+  onOpenAuth,
   surahName,
   fromAyah,
   toAyah,
@@ -112,6 +118,26 @@ export const Header: React.FC<HeaderProps> = ({
             <Compass className="h-3 w-3 text-[#52674B] dark:text-[#A4BA9E]" />
             <span className="font-scheherazade text-xs leading-none">سورة {surahName}</span>
             <span className="text-[#8B9886] font-mono text-[10px]">({fromAyah}-{toAyah})</span>
+          </button>
+
+          {/* Membership / Login Button */}
+          <button
+            onClick={onOpenAuth}
+            className={`flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+              memberDisplayName
+                ? 'bg-[#52674B]/12 dark:bg-[#688260]/25 text-[#2B3527] dark:text-[#F1F6F0] border-[#52674B]/30 dark:border-[#738C6B]/40 hover:bg-[#52674B]/20'
+                : 'bg-[#52674B] text-white border-[#52674B] hover:bg-[#43553D]'
+            }`}
+            title={memberDisplayName ? 'حساب العضوية والأصدقاء' : 'تسجيل عضوية جديدة أو دخول'}
+          >
+            {memberDisplayName ? (
+              <UserCheck className="h-3 w-3 text-[#52674B] dark:text-[#C5D8C1]" />
+            ) : (
+              <UserPlus className="h-3 w-3" />
+            )}
+            <span className="max-w-[90px] truncate">
+              {memberDisplayName ? memberDisplayName : 'عضوية / دخول'}
+            </span>
           </button>
 
           {/* Settings Modal Toggle */}

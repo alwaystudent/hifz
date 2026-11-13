@@ -1,34 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Peer from 'peerjs';
-import { DirectCallInvite, FriendItem, RoomPassageState } from '../types/quran';
+import { User } from 'firebase/auth';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  setDoc,
+  Unsubscribe,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import {
+  DirectCallInvite,
+  FriendItem,
+  MemberProfile,
+  RoomPassageState,
+} from '../types/quran';
 import {
   bindAudioUnlockOnce,
   startIncomingRingtone,
   startOutgoingRingback,
   stopAllRingtones,
 } from '../utils/ringtone';
-
-const PRESENCE_PREFIX = 'ratel-user-';
-const STORAGE_MY_CODE = 'ratel_my_friend_code';
-const STORAGE_MY_NAME = 'quran_peer_name';
-const STORAGE_FRIENDS = 'ratel_friends_list';
-
-const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun.cloudflare.com:3478' },
-  ],
-};
-
-function generateFriendCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'RT';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
 
 export function extractFriendInviteFromInput(
   input: string
@@ -39,15 +37,20 @@ export function extractFriendInviteFromInput(
   try {
     if (trimmed.includes('http') || trimmed.includes('addFriend=')) {
       const url = new URL(
-        trimmed.startsWith('http') ? trimmed : `https://x.local/${trimmed.replace(/^\?/, '?')}`
+        trimmed.startsWith('http')
+          ? trimmed
+          : `https://x.local/${trimmed.replace(/^\?/, '?')}`
       );
       const code = url.searchParams.get('addFriend');
       const name = url.searchParams.get('name') || undefined;
       if (code) {
-        return {
-          code: code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''),
-          name: name?.trim() || undefined,
-        };
+        const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (clean.length >= 6 && clean.length <= 16) {
+          return {
+            code: clean,
+            name: name?.trim() || undefined,
+          };
+        }
       }
     }
   } catch {
@@ -56,11 +59,14 @@ export function extractFriendInviteFromInput(
 
   const match = trimmed.match(/addFriend=([A-Za-z0-9]+)/i);
   if (match && match[1]) {
-    return { code: match[1].toUpperCase() };
+    const clean = match[1].toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clean.length >= 6 && clean.length <= 16) {
+      return { code: clean };
+    }
   }
 
   const clean = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (clean.length >= 4 && clean.length <= 16) {
+  if (clean.length >= 6 && clean.length <= 16) {
     return { code: clean };
   }
   return null;
@@ -75,478 +81,627 @@ export type OutgoingCallPhase =
 
 export interface OutgoingCallState {
   phase: OutgoingCallPhase;
+  callId: string | null;
   targetFriend: FriendItem | null;
   roomId: string | null;
   message: string | null;
 }
 
-export function useFriendsPresence() {
-  const [myCode] = useState<string>(() => {
-    if (typeof window === 'undefined') return generateFriendCode();
-    try {
-      const saved = localStorage.getItem(STORAGE_MY_CODE);
-      if (saved && saved.trim().length >= 6) return saved.trim().toUpperCase();
-      const created = generateFriendCode();
-      localStorage.setItem(STORAGE_MY_CODE, created);
-      return created;
-    } catch {
-      return generateFriendCode();
-    }
-  });
+interface UseFriendsPresenceParams {
+  user: User | null;
+  memberProfile: MemberProfile | null;
+  isAuthReady: boolean;
+  onRequireAuth?: (reason?: string) => void;
+}
 
-  const [myName, setMyName] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'طالب علم';
-    try {
-      return localStorage.getItem(STORAGE_MY_NAME) || 'طالب علم';
-    } catch {
-      return 'طالب علم';
-    }
-  });
-
-  const [friends, setFriends] = useState<FriendItem[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem(STORAGE_FRIENDS);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
+export function useFriendsPresence({
+  user,
+  memberProfile,
+  isAuthReady,
+  onRequireAuth,
+}: UseFriendsPresenceParams) {
+  const [friends, setFriends] = useState<FriendItem[]>([]);
   const [isPresenceReady, setIsPresenceReady] = useState(false);
   const [incomingCall, setIncomingCall] = useState<DirectCallInvite | null>(null);
+  const [activeCallId, setActiveCallId] = useState<string | null>(null);
   const [outgoingCall, setOutgoingCall] = useState<OutgoingCallState>({
     phase: 'idle',
+    callId: null,
     targetFriend: null,
     roomId: null,
     message: null,
   });
   const [friendNotice, setFriendNotice] = useState<string | null>(null);
 
-  const peerRef = useRef<Peer | null>(null);
-  const myNameRef = useRef(myName);
-  myNameRef.current = myName;
   const incomingCallRef = useRef(incomingCall);
   incomingCallRef.current = incomingCall;
   const outgoingCallRef = useRef(outgoingCall);
   outgoingCallRef.current = outgoingCall;
+  const activeCallIdRef = useRef(activeCallId);
+  activeCallIdRef.current = activeCallId;
+
+  const outgoingUnsubRef = useRef<Unsubscribe | null>(null);
   const outgoingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Persist friends list
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_FRIENDS, JSON.stringify(friends));
-    } catch {
-      // ignore
+  const isAuthenticated = Boolean(isAuthReady && user && memberProfile);
+  const myCode = memberProfile?.friendCode || '';
+  const myName = memberProfile?.displayName || '';
+
+  const cleanupOutgoingListeners = useCallback(() => {
+    if (outgoingTimeoutRef.current) {
+      clearTimeout(outgoingTimeoutRef.current);
+      outgoingTimeoutRef.current = null;
     }
-  }, [friends]);
-
-  // Persist display name
-  useEffect(() => {
-    try {
-      if (myName.trim()) {
-        localStorage.setItem(STORAGE_MY_NAME, myName.trim());
-      }
-    } catch {
-      // ignore
+    if (outgoingUnsubRef.current) {
+      outgoingUnsubRef.current();
+      outgoingUnsubRef.current = null;
     }
-  }, [myName]);
-
-  const upsertFriendLocal = useCallback(
-    (code: string, name?: string) => {
-      const cleanCode = code.trim().toUpperCase();
-      if (!cleanCode || cleanCode === myCode) return false;
-
-      setFriends((prev) => {
-        const existingIdx = prev.findIndex((f) => f.code === cleanCode);
-        const cleanName = name?.trim() || (existingIdx !== -1 ? prev[existingIdx].name : 'صديق');
-        if (existingIdx !== -1) {
-          const updated = [...prev];
-          updated[existingIdx] = {
-            ...updated[existingIdx],
-            name: name?.trim() ? cleanName : updated[existingIdx].name,
-          };
-          return updated;
-        }
-        return [
-          {
-            code: cleanCode,
-            name: cleanName,
-            addedAt: Date.now(),
-          },
-          ...prev,
-        ];
-      });
-      return true;
-    },
-    [myCode]
-  );
-
-  const removeFriend = useCallback((code: string) => {
-    setFriends((prev) => prev.filter((f) => f.code !== code));
   }, []);
 
-  // Send a one-shot message to another user's presence PeerJS ID
-  const sendPresenceMessage = useCallback(
-    (targetCode: string, payload: Record<string, unknown>): Promise<boolean> => {
-      return new Promise((resolve) => {
-        const peer = peerRef.current;
-        if (!peer || peer.destroyed || !peer.open) {
-          resolve(false);
+  // Unlock Web Audio playback on first user gesture
+  useEffect(() => {
+    bindAudioUnlockOnce();
+  }, []);
+
+  // Reset state when user signs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      stopAllRingtones();
+      cleanupOutgoingListeners();
+      setFriends([]);
+      setIncomingCall(null);
+      setActiveCallId(null);
+      setOutgoingCall({
+        phase: 'idle',
+        callId: null,
+        targetFriend: null,
+        roomId: null,
+        message: null,
+      });
+      setIsPresenceReady(false);
+    }
+  }, [isAuthenticated, cleanupOutgoingListeners]);
+
+  // 1) Real-time Firestore friends list listener (strictly after auth)
+  useEffect(() => {
+    if (!isAuthenticated || !user || !memberProfile) return;
+
+    const friendsPath = `users/${user.uid}/friends`;
+    const friendsQuery = query(
+      collection(db, 'users', user.uid, 'friends'),
+      where('ownerUid', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      friendsQuery,
+      (snapshot) => {
+        const list: FriendItem[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            uid: String(data.friendUid || d.id),
+            code: String(data.friendCode || ''),
+            name: String(data.friendName || 'صديق'),
+            addedAt:
+              typeof data.createdAt?.toMillis === 'function'
+                ? data.createdAt.toMillis()
+                : Date.now(),
+          };
+        });
+        list.sort((a, b) => b.addedAt - a.addedAt);
+        setFriends(list);
+        setIsPresenceReady(true);
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, friendsPath);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isAuthenticated, user, memberProfile]);
+
+  // 2) Real-time listener for incoming friend requests -> auto-complete mutual friendship
+  useEffect(() => {
+    if (!isAuthenticated || !user || !memberProfile) return;
+
+    const reqQuery = query(
+      collection(db, 'friendRequests'),
+      where('toUid', '==', user.uid),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(
+      reqQuery,
+      async (snapshot) => {
+        for (const reqDoc of snapshot.docs) {
+          const data = reqDoc.data();
+          const fromUid = String(data.fromUid || '');
+          const fromName = String(data.fromName || 'صديق').trim().slice(0, 80);
+          const fromCode = String(data.fromCode || '').toUpperCase();
+          if (!fromUid || !fromCode) continue;
+
+          try {
+            const friendRef = doc(db, 'users', user.uid, 'friends', fromUid);
+            const existingFriend = await getDoc(friendRef);
+
+            const batch = writeBatch(db);
+            const now = serverTimestamp();
+
+            if (!existingFriend.exists()) {
+              batch.set(friendRef, {
+                ownerUid: user.uid,
+                friendUid: fromUid,
+                friendCode: fromCode,
+                friendName: fromName,
+                createdAt: now,
+              });
+            }
+
+            batch.update(doc(db, 'friendRequests', reqDoc.id), {
+              status: 'accepted',
+              updatedAt: now,
+            });
+
+            await batch.commit();
+            setFriendNotice(`أضافك «${fromName}» إلى قائمة الأصدقاء بنجاح.`);
+          } catch (err) {
+            console.error('Failed to process incoming friend request:', err);
+          }
+        }
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, 'friendRequests');
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isAuthenticated, user, memberProfile]);
+
+  // 3) Global Real-time Incoming Voice Call Listener (/calls where calleeUid == me && status == 'ringing')
+  useEffect(() => {
+    if (!isAuthenticated || !user || !memberProfile) return;
+
+    const callsQuery = query(
+      collection(db, 'calls'),
+      where('calleeUid', '==', user.uid),
+      where('status', '==', 'ringing')
+    );
+
+    const unsubscribe = onSnapshot(
+      callsQuery,
+      (snapshot) => {
+        const nowMs = Date.now();
+        // Filter out stale abandoned calls older than 2 minutes
+        const activeDocs = snapshot.docs.filter((d) => {
+          const data = d.data();
+          const createdMs =
+            typeof data.createdAt?.toMillis === 'function'
+              ? data.createdAt.toMillis()
+              : nowMs;
+          return nowMs - createdMs < 120000;
+        });
+
+        if (activeDocs.length === 0) {
+          if (incomingCallRef.current) {
+            stopAllRingtones();
+            setIncomingCall(null);
+          }
           return;
         }
 
-        const cleanTarget = targetCode.trim().toUpperCase();
-        if (!cleanTarget || cleanTarget === myCode) {
-          resolve(false);
-          return;
-        }
+        // Pick latest ringing call
+        const latestDoc = activeDocs.sort((a, b) => {
+          const aTime =
+            typeof a.data().createdAt?.toMillis === 'function'
+              ? a.data().createdAt.toMillis()
+              : nowMs;
+          const bTime =
+            typeof b.data().createdAt?.toMillis === 'function'
+              ? b.data().createdAt.toMillis()
+              : nowMs;
+          return bTime - aTime;
+        })[0];
 
-        let settled = false;
-        const finish = (ok: boolean) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          resolve(ok);
+        const data = latestDoc.data();
+        const invite: DirectCallInvite = {
+          callId: latestDoc.id,
+          roomId: String(data.roomId || '').toUpperCase(),
+          callerUid: String(data.callerUid || ''),
+          callerCode: String(data.callerCode || '').toUpperCase(),
+          callerName: String(data.callerName || 'صديق'),
+          passage: {
+            surahNumber: Number(data.surahNumber || 1),
+            fromAyah: Number(data.fromAyah || 1),
+            toAyah: Number(data.toAyah || 7),
+            riwayah:
+              data.riwayah === 'warsh' || data.riwayah === 'qalun'
+                ? data.riwayah
+                : 'hafs',
+          },
+          receivedAt: nowMs,
         };
 
-        const conn = peer.connect(`${PRESENCE_PREFIX}${cleanTarget}`, {
-          reliable: true,
-        });
+        const prevId = incomingCallRef.current?.callId;
+        setIncomingCall(invite);
+        if (prevId !== invite.callId) {
+          startIncomingRingtone();
+        }
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, 'calls');
+      }
+    );
 
-        const timer = setTimeout(() => {
-          try {
-            conn.close();
-          } catch {
-            // ignore
-          }
-          finish(false);
-        }, 5500);
+    return () => {
+      unsubscribe();
+    };
+  }, [isAuthenticated, user, memberProfile]);
 
-        conn.on('open', () => {
-          try {
-            conn.send(payload);
-            setTimeout(() => {
-              try {
-                conn.close();
-              } catch {
-                // ignore
-              }
-              finish(true);
-            }, 350);
-          } catch {
-            finish(false);
-          }
-        });
-
-        conn.on('error', () => {
-          finish(false);
-        });
-      });
-    },
-    [myCode]
-  );
-
-  // Add friend locally and attempt mutual handshake if friend is currently online
+  // 4) Add friend by invite link or code (STRICTLY gated on login)
   const addFriendByInvite = useCallback(
-    async (input: string, fallbackName?: string): Promise<{ added: boolean; synced: boolean; code?: string }> => {
+    async (
+      input: string
+    ): Promise<{ added: boolean; synced: boolean; code?: string; requiresAuth?: boolean }> => {
+      if (!isAuthReady || !user || !memberProfile) {
+        setFriendNotice('يرجى تسجيل الدخول أو إنشاء عضوية أولاً لإضافة الأصدقاء.');
+        onRequireAuth?.('لإضافة الأصدقاء والتواصل معهم صوتياً، يرجى تسجيل الدخول أو إنشاء عضوية أولاً.');
+        return { added: false, synced: false, requiresAuth: true };
+      }
+
       const parsed = extractFriendInviteFromInput(input);
       if (!parsed || !parsed.code) {
+        setFriendNotice('رمز الصديق أو رابط الدعوة غير صالح.');
         return { added: false, synced: false };
       }
-      if (parsed.code === myCode) {
+
+      if (parsed.code === memberProfile.friendCode) {
         setFriendNotice('لا يمكنك إضافة رمز دعوتك الشخصي لنفسك.');
         return { added: false, synced: false };
       }
 
-      const displayName = parsed.name || fallbackName || 'صديق';
-      upsertFriendLocal(parsed.code, displayName);
+      const codePath = `inviteCodes/${parsed.code}`;
+      let inviteSnap;
+      try {
+        inviteSnap = await getDoc(doc(db, 'inviteCodes', parsed.code));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, codePath);
+      }
 
-      const synced = await sendPresenceMessage(parsed.code, {
-        type: 'friend:handshake',
-        fromCode: myCode,
-        fromName: myNameRef.current.trim() || 'صديق',
-      });
+      if (!inviteSnap || !inviteSnap.exists()) {
+        setFriendNotice('لم يتم العثور على عضو مسجل بهذا الرمز. تأكد من الرابط أو الرمز.');
+        return { added: false, synced: false };
+      }
 
-      setFriendNotice(
-        synced
-          ? `تمت إضافة «${displayName}» ومزامنة الصداقة بنجاح.`
-          : `تمت إضافة «${displayName}» إلى قائمة أصدقائك.`
-      );
-      return { added: true, synced, code: parsed.code };
+      const inviteData = inviteSnap.data();
+      const targetUid = String(inviteData.ownerUid || '');
+      const targetName = String(inviteData.displayName || parsed.name || 'صديق')
+        .trim()
+        .slice(0, 80);
+
+      if (!targetUid || targetUid === user.uid) {
+        setFriendNotice('لا يمكنك إضافة نفسك إلى قائمة الأصدقاء.');
+        return { added: false, synced: false };
+      }
+
+      // Verify target profile exists
+      try {
+        const targetProfileSnap = await getDoc(doc(db, 'profiles', targetUid));
+        if (!targetProfileSnap.exists()) {
+          setFriendNotice('تعذر التحقق من حساب الصديق.');
+          return { added: false, synced: false };
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `profiles/${targetUid}`);
+      }
+
+      // Prevent duplicate friend write (update is disallowed by rules)
+      const myFriendRef = doc(db, 'users', user.uid, 'friends', targetUid);
+      try {
+        const existingFriendSnap = await getDoc(myFriendRef);
+        if (existingFriendSnap.exists()) {
+          setFriendNotice(`«${targetName}» موجود بالفعل في قائمة أصدقائك.`);
+          return { added: true, synced: true, code: parsed.code };
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}/friends/${targetUid}`);
+      }
+
+      // Add friend + send mutual friendRequest atomically
+      const requestId = `${user.uid}_${targetUid}_${Date.now().toString(36)}`;
+      try {
+        const batch = writeBatch(db);
+        const now = serverTimestamp();
+
+        batch.set(myFriendRef, {
+          ownerUid: user.uid,
+          friendUid: targetUid,
+          friendCode: parsed.code,
+          friendName: targetName,
+          createdAt: now,
+        });
+
+        batch.set(doc(db, 'friendRequests', requestId), {
+          fromUid: user.uid,
+          fromName: memberProfile.displayName,
+          fromCode: memberProfile.friendCode,
+          toUid: targetUid,
+          status: 'pending',
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await batch.commit();
+        setFriendNotice(`تمت إضافة «${targetName}» إلى قائمة أصدقائك بنجاح.`);
+        return { added: true, synced: true, code: parsed.code };
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/friends/${targetUid}`);
+      }
     },
-    [myCode, sendPresenceMessage, upsertFriendLocal]
+    [isAuthReady, user, memberProfile, onRequireAuth]
   );
 
-  // Initialize global PeerJS presence listener across all stages (works on Vercel)
-  useEffect(() => {
-    bindAudioUnlockOnce();
-
-    let cancelled = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const connectPresence = () => {
-      if (cancelled) return;
-      const peer = new Peer(`${PRESENCE_PREFIX}${myCode}`, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
-        config: ICE_SERVERS,
-        debug: 0,
-      });
-      peerRef.current = peer;
-
-      peer.on('open', () => {
-        if (!cancelled) setIsPresenceReady(true);
-      });
-
-      peer.on('connection', (conn) => {
-        conn.on('data', (raw: any) => {
-          if (!raw || typeof raw !== 'object') return;
-
-          if (raw.type === 'friend:handshake' && raw.fromCode) {
-            const fromCode = String(raw.fromCode).toUpperCase();
-            const fromName = String(raw.fromName || 'صديق').trim();
-            upsertFriendLocal(fromCode, fromName);
-            setFriendNotice(`أضافك «${fromName}» إلى قائمة الأصدقاء.`);
-            // Send ack back with our latest name
-            sendPresenceMessage(fromCode, {
-              type: 'friend:handshake-ack',
-              fromCode: myCode,
-              fromName: myNameRef.current.trim() || 'صديق',
-            });
-            return;
-          }
-
-          if (raw.type === 'friend:handshake-ack' && raw.fromCode) {
-            const fromCode = String(raw.fromCode).toUpperCase();
-            const fromName = String(raw.fromName || 'صديق').trim();
-            upsertFriendLocal(fromCode, fromName);
-            return;
-          }
-
-          if (raw.type === 'call:invite' && raw.roomId && raw.callerCode) {
-            const callerCode = String(raw.callerCode).toUpperCase();
-            const callerName = String(raw.callerName || 'صديق').trim();
-            upsertFriendLocal(callerCode, callerName);
-
-            const invite: DirectCallInvite = {
-              roomId: String(raw.roomId).toUpperCase(),
-              callerCode,
-              callerName,
-              passage: raw.passage || {
-                surahNumber: 1,
-                fromAyah: 1,
-                toAyah: 7,
-                riwayah: 'hafs',
-              },
-              receivedAt: Date.now(),
-            };
-            setIncomingCall(invite);
-            startIncomingRingtone();
-            return;
-          }
-
-          if (raw.type === 'call:cancelled' && raw.roomId) {
-            const cur = incomingCallRef.current;
-            if (cur && cur.roomId === String(raw.roomId).toUpperCase()) {
-              stopAllRingtones();
-              setIncomingCall(null);
-            }
-            return;
-          }
-
-          if (raw.type === 'call:accepted' && raw.roomId) {
-            const curOut = outgoingCallRef.current;
-            if (curOut.roomId === String(raw.roomId).toUpperCase()) {
-              stopAllRingtones();
-              if (outgoingTimeoutRef.current) {
-                clearTimeout(outgoingTimeoutRef.current);
-                outgoingTimeoutRef.current = null;
-              }
-              setOutgoingCall((prev) => ({
-                ...prev,
-                phase: 'accepted',
-                message: 'وافق الصديق، جاري ربط الصوت...',
-              }));
-            }
-            return;
-          }
-
-          if (raw.type === 'call:rejected' && raw.roomId) {
-            const curOut = outgoingCallRef.current;
-            if (curOut.roomId === String(raw.roomId).toUpperCase()) {
-              stopAllRingtones();
-              if (outgoingTimeoutRef.current) {
-                clearTimeout(outgoingTimeoutRef.current);
-                outgoingTimeoutRef.current = null;
-              }
-              setOutgoingCall((prev) => ({
-                ...prev,
-                phase: 'rejected',
-                message: `اعتذر «${prev.targetFriend?.name || 'الصديق'}» عن استقبال المكالمة حالياً.`,
-              }));
-            }
-          }
-        });
-      });
-
-      peer.on('disconnected', () => {
-        if (!cancelled && !peer.destroyed) {
-          setIsPresenceReady(false);
-          reconnectTimer = setTimeout(() => {
-            try {
-              peer.reconnect();
-            } catch {
-              // ignore
-            }
-          }, 3000);
-        }
-      });
-
-      peer.on('error', (err: any) => {
-        // Ignore transient peer-unavailable errors raised by outbound peer.connect() attempts
-        if (err?.type === 'peer-unavailable') return;
-        if (err?.type === 'network' || err?.type === 'server-error') {
-          setIsPresenceReady(false);
-        }
-      });
-    };
-
-    connectPresence();
-
-    return () => {
-      cancelled = true;
-      stopAllRingtones();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current);
-      if (peerRef.current) {
-        try {
-          peerRef.current.destroy();
-        } catch {
-          // ignore
-        }
-        peerRef.current = null;
+  // 5) Remove friend from personal list
+  const removeFriend = useCallback(
+    async (friendUid: string) => {
+      if (!user) return;
+      const friendPath = `users/${user.uid}/friends/${friendUid}`;
+      try {
+        await deleteDoc(doc(db, 'users', user.uid, 'friends', friendUid));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, friendPath);
       }
-    };
-  }, [myCode, sendPresenceMessage, upsertFriendLocal]);
+    },
+    [user]
+  );
 
-  // Initiate a direct call invite to a friend
+  // 6) Initiate a direct call with synchronized ringing window on both sides
   const sendDirectCallInvite = useCallback(
-    async (friend: FriendItem, roomId: string, passage: RoomPassageState) => {
-      if (outgoingTimeoutRef.current) {
-        clearTimeout(outgoingTimeoutRef.current);
-        outgoingTimeoutRef.current = null;
+    async (friend: FriendItem, roomId: string, passage: RoomPassageState): Promise<boolean> => {
+      if (!isAuthenticated || !user || !memberProfile) {
+        onRequireAuth?.('يرجى تسجيل الدخول أولاً لإجراء اتصال مباشر بالأصدقاء.');
+        return false;
       }
+
+      cleanupOutgoingListeners();
+
+      const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const callRef = doc(db, 'calls', callId);
 
       setOutgoingCall({
         phase: 'ringing',
+        callId,
         targetFriend: friend,
         roomId,
         message: `جاري الاتصال بـ «${friend.name}»...`,
       });
       startOutgoingRingback();
 
-      const delivered = await sendPresenceMessage(friend.code, {
-        type: 'call:invite',
-        roomId,
-        callerCode: myCode,
-        callerName: myNameRef.current.trim() || 'صديق',
-        passage,
-      });
-
-      if (!delivered) {
+      try {
+        const now = serverTimestamp();
+        await setDoc(callRef, {
+          callerUid: user.uid,
+          callerName: memberProfile.displayName,
+          callerCode: memberProfile.friendCode,
+          calleeUid: friend.uid,
+          calleeName: friend.name,
+          roomId,
+          status: 'ringing',
+          surahNumber: passage.surahNumber,
+          fromAyah: passage.fromAyah,
+          toAyah: passage.toAyah,
+          riwayah: passage.riwayah,
+          createdAt: now,
+          updatedAt: now,
+        });
+      } catch (err) {
         stopAllRingtones();
         setOutgoingCall({
           phase: 'offline',
+          callId: null,
           targetFriend: friend,
           roomId,
-          message: `«${friend.name}» غير فاتح للتطبيق حالياً. يمكنك إرسال رابط الغرفة له مباشرة للانضمام.`,
+          message: `تعذر إرسال إشعار الاتصال إلى «${friend.name}».`,
         });
-        return false;
+        handleFirestoreError(err, OperationType.CREATE, `calls/${callId}`);
       }
 
-      outgoingTimeoutRef.current = setTimeout(() => {
+      // Subscribe to call status updates from callee (accepted / rejected)
+      outgoingUnsubRef.current = onSnapshot(
+        callRef,
+        (snap) => {
+          if (!snap.exists()) return;
+          const data = snap.data();
+          const status = data.status;
+
+          if (status === 'accepted') {
+            stopAllRingtones();
+            cleanupOutgoingListeners();
+            setActiveCallId(callId);
+            setOutgoingCall((prev) => ({
+              ...prev,
+              phase: 'accepted',
+              message: 'تم الرد! جاري فتح المكالمة الصوتية...',
+            }));
+          } else if (status === 'rejected') {
+            stopAllRingtones();
+            cleanupOutgoingListeners();
+            setOutgoingCall((prev) => ({
+              ...prev,
+              phase: 'rejected',
+              message: `اعتذر «${friend.name}» عن استقبال المكالمة حالياً.`,
+            }));
+          } else if (status === 'cancelled' || status === 'ended') {
+            stopAllRingtones();
+            cleanupOutgoingListeners();
+            setOutgoingCall({
+              phase: 'idle',
+              callId: null,
+              targetFriend: null,
+              roomId: null,
+              message: null,
+            });
+          }
+        },
+        (err) => {
+          handleFirestoreError(err, OperationType.GET, `calls/${callId}`);
+        }
+      );
+
+      // Ring timeout after 45 seconds if no answer
+      outgoingTimeoutRef.current = setTimeout(async () => {
         stopAllRingtones();
+        cleanupOutgoingListeners();
+        try {
+          const snap = await getDoc(callRef);
+          if (snap.exists() && snap.data().status === 'ringing') {
+            await updateDoc(callRef, {
+              status: 'cancelled',
+              updatedAt: serverTimestamp(),
+            });
+          }
+        } catch {
+          // ignore cleanup errors on timeout
+        }
         setOutgoingCall((prev) =>
           prev.phase === 'ringing'
             ? {
                 ...prev,
                 phase: 'offline',
-                message: `لم يرد «${friend.name}» بعد. الغرفة مفتوحة ويمكنك مشاركة الرابط معه.`,
+                message: `لم يرد «${friend.name}» على الرنين. الغرفة مفتوحة ويمكنك مشاركة رابطها معه.`,
               }
             : prev
         );
-      }, 30000);
+      }, 45000);
 
       return true;
     },
-    [myCode, sendPresenceMessage]
+    [isAuthenticated, user, memberProfile, onRequireAuth, cleanupOutgoingListeners]
   );
 
+  // 7) Cancel an outgoing ringing call
   const cancelOutgoingCall = useCallback(async () => {
     stopAllRingtones();
-    if (outgoingTimeoutRef.current) {
-      clearTimeout(outgoingTimeoutRef.current);
-      outgoingTimeoutRef.current = null;
-    }
+    cleanupOutgoingListeners();
+
     const cur = outgoingCallRef.current;
-    if (cur.targetFriend && cur.roomId && cur.phase === 'ringing') {
-      await sendPresenceMessage(cur.targetFriend.code, {
-        type: 'call:cancelled',
-        roomId: cur.roomId,
-      });
-    }
     setOutgoingCall({
       phase: 'idle',
+      callId: null,
       targetFriend: null,
       roomId: null,
       message: null,
     });
-  }, [sendPresenceMessage]);
+
+    if (cur.callId && cur.phase === 'ringing') {
+      try {
+        const callRef = doc(db, 'calls', cur.callId);
+        const snap = await getDoc(callRef);
+        if (snap.exists() && snap.data().status === 'ringing') {
+          await updateDoc(callRef, {
+            status: 'cancelled',
+            updatedAt: serverTimestamp(),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to cancel outgoing call:', err);
+      }
+    }
+  }, [cleanupOutgoingListeners]);
 
   const clearOutgoingState = useCallback(() => {
     stopAllRingtones();
-    if (outgoingTimeoutRef.current) {
-      clearTimeout(outgoingTimeoutRef.current);
-      outgoingTimeoutRef.current = null;
-    }
+    cleanupOutgoingListeners();
     setOutgoingCall({
       phase: 'idle',
+      callId: null,
       targetFriend: null,
       roomId: null,
       message: null,
     });
-  }, []);
+  }, [cleanupOutgoingListeners]);
 
-  const acceptIncomingCall = useCallback(async () => {
+  // 8) Accept incoming call -> notifies caller immediately via Firestore
+  const acceptIncomingCall = useCallback(async (): Promise<DirectCallInvite | null> => {
     stopAllRingtones();
     const cur = incomingCallRef.current;
     setIncomingCall(null);
     if (!cur) return null;
 
-    await sendPresenceMessage(cur.callerCode, {
-      type: 'call:accepted',
-      roomId: cur.roomId,
-    });
-    return cur;
-  }, [sendPresenceMessage]);
+    const callRef = doc(db, 'calls', cur.callId);
+    try {
+      const snap = await getDoc(callRef);
+      if (snap.exists() && snap.data().status === 'ringing') {
+        await updateDoc(callRef, {
+          status: 'accepted',
+          updatedAt: serverTimestamp(),
+        });
+        setActiveCallId(cur.callId);
+        return cur;
+      }
+      setFriendNotice('انتهى الرنين أو ألغى المتصل المكالمة قبل الرد.');
+      return null;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `calls/${cur.callId}`);
+    }
+  }, []);
 
+  // 9) Reject incoming call -> notifies caller immediately via Firestore
   const rejectIncomingCall = useCallback(async () => {
     stopAllRingtones();
     const cur = incomingCallRef.current;
     setIncomingCall(null);
     if (!cur) return;
 
-    await sendPresenceMessage(cur.callerCode, {
-      type: 'call:rejected',
-      roomId: cur.roomId,
-    });
-  }, [sendPresenceMessage]);
+    const callRef = doc(db, 'calls', cur.callId);
+    try {
+      const snap = await getDoc(callRef);
+      if (snap.exists() && snap.data().status === 'ringing') {
+        await updateDoc(callRef, {
+          status: 'rejected',
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `calls/${cur.callId}`);
+    }
+  }, []);
+
+  // 10) End an active accepted call cleanly on hangup
+  const endActiveCall = useCallback(async (explicitCallId?: string | null) => {
+    const targetId = explicitCallId || activeCallIdRef.current;
+    setActiveCallId(null);
+    if (!targetId) return;
+
+    try {
+      const callRef = doc(db, 'calls', targetId);
+      const snap = await getDoc(callRef);
+      if (!snap.exists()) return;
+      const status = snap.data().status;
+      if (status === 'accepted') {
+        await updateDoc(callRef, {
+          status: 'ended',
+          updatedAt: serverTimestamp(),
+        });
+      } else if (status === 'ringing' && snap.data().callerUid === user?.uid) {
+        await updateDoc(callRef, {
+          status: 'cancelled',
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to mark call ended:', err);
+    }
+  }, [user?.uid]);
+
+  // Cleanup timers/listeners on unmount
+  useEffect(() => {
+    return () => {
+      stopAllRingtones();
+      cleanupOutgoingListeners();
+    };
+  }, [cleanupOutgoingListeners]);
 
   const myFriendInviteUrl =
-    typeof window !== 'undefined'
+    typeof window !== 'undefined' && myCode
       ? `${window.location.origin}${window.location.pathname}?addFriend=${myCode}&name=${encodeURIComponent(
           myName.trim() || 'صديق'
         )}`
@@ -555,12 +710,12 @@ export function useFriendsPresence() {
   return {
     myCode,
     myName,
-    setMyName,
     myFriendInviteUrl,
     friends,
     isPresenceReady,
     incomingCall,
     outgoingCall,
+    activeCallId,
     friendNotice,
     setFriendNotice,
     addFriendByInvite,
@@ -570,5 +725,6 @@ export function useFriendsPresence() {
     clearOutgoingState,
     acceptIncomingCall,
     rejectIncomingCall,
+    endActiveCall,
   };
 }
