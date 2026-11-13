@@ -38,9 +38,9 @@ export function normalizeArabic(text: string): string {
     .replace(/ربوا/g, 'ربا')
     .replace(ARABIC_DIACRITICS_REGEX, '')
     .replace(QURANIC_SYMBOLS_REGEX, '')
-    .replace(/[\u0640]/g, '') // tatweel
+    .replace(/[\u0640\u200E\u200F\u200C\u200D]/g, '') // tatweel & directional marks
     .replace(/[أإآٱ]/g, 'ا')
-    .replace(/[ىئ]/g, 'ي')
+    .replace(/[ىئ\u06CC]/g, 'ي')
     .replace(/ة/g, 'ه')
     .replace(/ؤ/g, 'و')
     .replace(/[^\u0621-\u064A\s]/g, '') // keep only standard Arabic letters and whitespace
@@ -50,21 +50,31 @@ export function normalizeArabic(text: string): string {
   // Squash multiple identical alifs (e.g. elongation ااا -> ا)
   str = str.replace(/ا+/g, 'ا');
 
-  // Convert words that take dagger alif in Uthmani but are spelled WITHOUT alif in standard modern Arabic dictation
+  // Convert Uthmani / Warsh / Qalun orthography to match standard Arabic STT output
   const specialMap: Record<string, string> = {
     'الرحمان': 'الرحمن',
     'رحمان': 'رحمن',
     'هاذا': 'هذا',
     'هاذه': 'هذه',
-    'هاولاء': 'هؤلاء',
+    'هاولاء': 'هولا',
+    'هولاء': 'هولا',
+    'هولاي': 'هولا',
     'ذالك': 'ذلك',
     'كذالك': 'كذلك',
     'ذالكم': 'ذلكم',
-    'ذلكما': 'ذلكما',
+    'ذالكما': 'ذلكما',
     'لاكن': 'لكن',
-    'اولائك': 'اولئك',
+    'ولاكن': 'ولكن',
+    'اولائك': 'اوليك',
+    'اولاءك': 'اوليك',
     'الاه': 'اله',
     'طاها': 'طه',
+    'ياسين': 'يس',
+    'يايها': 'يا ايها',
+    'ياايها': 'يا ايها',
+    'يانبي': 'يا نبي',
+    'ياقوم': 'يا قوم',
+    'ياموسي': 'يا موسي',
     'صلوه': 'صلاه',
     'صلواه': 'صلاه',
     'الصلواه': 'الصلاه',
@@ -79,9 +89,17 @@ export function normalizeArabic(text: string): string {
     'الحيوه': 'الحياه',
     'ربوا': 'ربا',
     'الربوا': 'الربا',
+    'لله': 'لله',
+    'ابراهيم': 'ابراهيم',
+    'ابراهام': 'ابراهيم',
   };
 
-  str = str.split(' ').map((w) => specialMap[w] || w).join(' ');
+  str = str
+    .split(' ')
+    .map((w) => specialMap[w] || w)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   return str;
 }

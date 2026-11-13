@@ -1,40 +1,125 @@
-import { SurahMeta, AyahItem, Reciter } from '../types/quran';
+import { SurahMeta, AyahItem, Reciter, RiwayahId, RiwayahMeta, AyahTiming } from '../types/quran';
+
+export const RIWAYAT_LIST: RiwayahMeta[] = [
+  {
+    id: 'hafs',
+    name: 'حفص عن عاصم',
+    shortName: 'حفص',
+    description: 'الرواية الأشهر في العالم الإسلامي برواية حفص عن عاصم الكوفي',
+  },
+  {
+    id: 'warsh',
+    name: 'ورش عن نافع',
+    shortName: 'ورش',
+    description: 'رواية الإمام ورش عن نافع المدني (المعتمدة في المغرب العربي وغرب إفريقيا)',
+  },
+  {
+    id: 'qalun',
+    name: 'قالون عن نافع',
+    shortName: 'قالون',
+    description: 'رواية الإمام قالون عن نافع المدني (المعتمدة في ليبيا وتونس وأجزاء من إفريقيا)',
+  },
+];
 
 export const RECITERS: Reciter[] = [
+  // ================= رواية حفص عن عاصم =================
   {
     id: 'husary_muallim',
     name: 'الشيخ محمود خليل الحصري',
-    edition: 'المصحف المعلم',
+    edition: 'المصحف المعلم · حفص',
+    riwayah: 'hafs',
     subfolder: 'Husary_Muallim_128kbps',
     description: 'ترتيل هادئ متقن مع سكتات تعليمية نموذجية لضبط مخارج الحروف وأحكام التجويد',
   },
   {
     id: 'hudhaify',
     name: 'الشيخ علي بن عبد الرحمن الحذيفي',
-    edition: 'المصحف المرتل',
+    edition: 'المصحف المرتل · حفص',
+    riwayah: 'hafs',
     subfolder: 'Hudhaify_128kbps',
     description: 'تلاوة متأنية رصينة بنبرة واضحة ومخارج فصيحة تناسب الحفظ والمراجعة',
   },
   {
     id: 'husary_murattal',
     name: 'الشيخ محمود خليل الحصري',
-    edition: 'المصحف المرتل',
+    edition: 'المصحف المرتل · حفص',
+    riwayah: 'hafs',
     subfolder: 'Husary_128kbps',
     description: 'التلاوة المرتلة الأصلية لشيخ عموم المقارئ المصرية برواية حفص عن عاصم',
   },
   {
     id: 'minshawy_muallim',
     name: 'الشيخ محمد صديق المنشاوي',
-    edition: 'المصحف المعلم',
+    edition: 'المصحف المعلم · حفص',
+    riwayah: 'hafs',
     subfolder: 'Minshawy_Teacher_128kbps',
     description: 'نبرة خاشعة مؤثرة مع أداء تعليمي دقيق ومتقن',
   },
   {
     id: 'alafasy',
     name: 'الشيخ مشاري راشد العفاسي',
-    edition: 'المصحف المرتل',
+    edition: 'المصحف المرتل · حفص',
+    riwayah: 'hafs',
     subfolder: 'Alafasy_128kbps',
     description: 'صوت عذب ندي وتلاوة واضحة محببة للناشئة والحفاظ',
+  },
+
+  // ================= رواية ورش عن نافع =================
+  {
+    id: 'yassin_warsh',
+    name: 'الشيخ ياسين الجزائري',
+    edition: 'برواية ورش عن نافع',
+    riwayah: 'warsh',
+    subfolder: 'warsh/warsh_yassin_al_jazaery_64kbps',
+    description: 'تلاوة تعليمية متقنة بأحكام ورش عن نافع مع وضوح المدود والإمالة والنقل',
+  },
+  {
+    id: 'aldosary_warsh',
+    name: 'الشيخ إبراهيم الدوسري',
+    edition: 'برواية ورش عن نافع',
+    riwayah: 'warsh',
+    subfolder: 'warsh/warsh_ibrahim_aldosary_128kbps',
+    description: 'ترتيل واضح رصين برواية ورش عن نافع من طريق الأزرق',
+  },
+  {
+    id: 'abdulbasit_warsh',
+    name: 'الشيخ عبد الباسط عبد الصمد',
+    edition: 'برواية ورش عن نافع',
+    riwayah: 'warsh',
+    subfolder: 'warsh/warsh_Abdul_Basit_128kbps',
+    description: 'تلاوة خاشعة مجودة للشيخ عبد الباسط برواية ورش عن نافع',
+  },
+  {
+    id: 'husary_warsh',
+    name: 'الشيخ محمود خليل الحصري',
+    edition: 'برواية ورش عن نافع',
+    riwayah: 'warsh',
+    subfolder: 'mp3quran_warsh_husary',
+    mp3QuranReadId: 120,
+    mp3QuranFolderUrl: 'https://cdn.mp3quran.net/audio/mahmoud-husary/r3/',
+    description: 'المصحف المرتل للشيخ الحصري برواية ورش عن نافع بمحاذاة الآيات الدقيقة',
+  },
+
+  // ================= رواية قالون عن نافع =================
+  {
+    id: 'hudhaify_qalun',
+    name: 'الشيخ علي بن عبد الرحمن الحذيفي',
+    edition: 'برواية قالون عن نافع',
+    riwayah: 'qalun',
+    subfolder: 'mp3quran_qalun_hudhaify',
+    mp3QuranReadId: 75,
+    mp3QuranFolderUrl: 'https://cdn.mp3quran.net/audio/ali-hudhaifi/r2/',
+    description: 'تلاوة واضحة متأنية برواية قالون عن نافع المدني للشيخ علي الحذيفي',
+  },
+  {
+    id: 'dokali_qalun',
+    name: 'الشيخ الدوكالي محمد العالم',
+    edition: 'برواية قالون عن نافع',
+    riwayah: 'qalun',
+    subfolder: 'mp3quran_qalun_dokali',
+    mp3QuranReadId: 208,
+    mp3QuranFolderUrl: 'https://cdn.mp3quran.net/audio/dokali-alim/r1/',
+    description: 'تلاوة ليبية متقنة بأحكام رواية قالون عن نافع للشيخ الدوكالي محمد العالم',
   },
 ];
 
@@ -226,49 +311,81 @@ export const BUNDLED_SURAHS: Record<number, AyahItem[]> = {
   ]
 };
 
-// Memory cache for runtime fetched surahs
-const memoryCache: Record<number, AyahItem[]> = {};
+export const BUNDLED_SURAHS_WARSH: Record<number, AyahItem[]> = {
+  1: [
+    { number: 1, numberInSurah: 1, text: "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ" },
+    { number: 2, numberInSurah: 2, text: "اِ۬لْحَمْدُ لِلهِ رَبِّ اِ۬لْعَٰلَمِينَ" },
+    { number: 3, numberInSurah: 3, text: "اَ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ" },
+    { number: 4, numberInSurah: 4, text: "مَلِكِ يَوْمِ اِ۬لدِّينِۖ" },
+    { number: 5, numberInSurah: 5, text: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُۖ" },
+    { number: 6, numberInSurah: 6, text: "اُ۪هْدِنَا اَ۬لصِّرَٰطَ اَ۬لْمُسْتَقِيمَ" },
+    { number: 7, numberInSurah: 7, text: "صِرَٰطَ اَ۬لذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ اِ۬لْمَغْضُوبِ عَلَيْهِمْ وَلَا اَ۬لضَّآلِّينَۖ" },
+  ],
+  112: [
+    { number: 6222, numberInSurah: 1, text: "قُلْ هُوَ اَ۬للَّهُ أَحَدٌۖ" },
+    { number: 6223, numberInSurah: 2, text: "اِ۬للَّهُ اُ۬لصَّمَدُۖ" },
+    { number: 6224, numberInSurah: 3, text: "لَمْ يَلِدْ وَلَمْ يُولَدْۖ" },
+    { number: 6225, numberInSurah: 4, text: "وَلَمْ يَكُن لَّهُۥ كُفُؤاً اَحَدࣱۖ" },
+  ],
+};
+
+// Memory caches keyed by `${riwayah}_${surahNumber}`
+const memoryCache: Record<string, AyahItem[]> = {};
+const timingCache: Record<string, AyahTiming[]> = {};
 
 /**
  * Normalizes Bismillah from first verse if bundled together (except Al-Fatihah and At-Tawbah)
  */
 function cleanBismillah(text: string, surahNumber: number): string {
-  if (surahNumber === 1 || surahNumber === 9) return text;
-  const bismillah = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
-  const bismillahUthmani = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
-  if (text.startsWith(bismillah)) {
-    return text.replace(bismillah, '').trim();
+  if (surahNumber === 1 || surahNumber === 9) return text.replace(/\u200F|\u200E/g, '').trim();
+  const cleaned = text.replace(/\u200F|\u200E/g, '').trim();
+  const patterns = [
+    "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+    "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+    "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ",
+  ];
+  for (const p of patterns) {
+    if (cleaned.startsWith(p)) {
+      return cleaned.replace(p, '').trim();
+    }
   }
-  if (text.startsWith(bismillahUthmani)) {
-    return text.replace(bismillahUthmani, '').trim();
-  }
-  return text;
+  return cleaned;
 }
 
 /**
- * Fetches all ayahs for a given Surah from Al-Quran Cloud or Quran.com API (Uthmani edition)
- * with multi-tier caching (bundled -> memory -> localStorage -> API -> Mirror).
+ * Fetches all ayahs for a given Surah and Riwayah (hafs | warsh | qalun)
+ * with multi-tier caching (memory -> bundled -> localStorage -> API).
  */
-export async function fetchSurahAyahs(surahNumber: number): Promise<AyahItem[]> {
+export async function fetchSurahAyahs(
+  surahNumber: number,
+  riwayah: RiwayahId = 'hafs'
+): Promise<AyahItem[]> {
+  const cacheKey = `${riwayah}_${surahNumber}`;
+
   // 1. Check in-memory cache
-  if (memoryCache[surahNumber] && memoryCache[surahNumber].length > 0) {
-    return memoryCache[surahNumber];
+  if (memoryCache[cacheKey] && memoryCache[cacheKey].length > 0) {
+    return memoryCache[cacheKey];
   }
 
   // 2. Check bundled surahs
-  if (BUNDLED_SURAHS[surahNumber] && BUNDLED_SURAHS[surahNumber].length > 0) {
-    memoryCache[surahNumber] = BUNDLED_SURAHS[surahNumber];
+  if (riwayah === 'hafs' && BUNDLED_SURAHS[surahNumber]) {
+    memoryCache[cacheKey] = BUNDLED_SURAHS[surahNumber];
     return BUNDLED_SURAHS[surahNumber];
+  }
+  if ((riwayah === 'warsh' || riwayah === 'qalun') && BUNDLED_SURAHS_WARSH[surahNumber]) {
+    memoryCache[cacheKey] = BUNDLED_SURAHS_WARSH[surahNumber];
+    return BUNDLED_SURAHS_WARSH[surahNumber];
   }
 
   // 3. Check localStorage cache
+  const storageKey = `quran_surah_${surahNumber}_${riwayah}_v1`;
   try {
     if (typeof localStorage !== 'undefined') {
-      const cached = localStorage.getItem(`quran_surah_${surahNumber}_uthmani`);
+      const cached = localStorage.getItem(storageKey);
       if (cached) {
         const parsed: AyahItem[] = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryCache[surahNumber] = parsed;
+          memoryCache[cacheKey] = parsed;
           return parsed;
         }
       }
@@ -277,7 +394,33 @@ export async function fetchSurahAyahs(surahNumber: number): Promise<AyahItem[]> 
     console.warn('LocalStorage read error:', err);
   }
 
-  // 4. Primary API: Al-Quran Cloud (tries singular edition first, then plural)
+  // 4. Fetch authentic Warsh or Qalun edition from fawazahmed0 CDN
+  if (riwayah === 'warsh' || riwayah === 'qalun') {
+    const editionSlug = riwayah === 'warsh' ? 'ara-quranwarsh' : 'ara-quranqaloon';
+    try {
+      const url = `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${editionSlug}/${surahNumber}.json`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const json = await response.json();
+        if (Array.isArray(json.chapter) && json.chapter.length > 0) {
+          const ayahs: AyahItem[] = json.chapter.map((v: any, idx: number) => ({
+            number: idx + 1,
+            numberInSurah: v.verse || idx + 1,
+            text: cleanBismillah(String(v.text || ''), surahNumber),
+          }));
+          memoryCache[cacheKey] = ayahs;
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(ayahs));
+          } catch (e) {}
+          return ayahs;
+        }
+      }
+    } catch (err) {
+      console.warn(`Failed ${riwayah} edition fetch, trying Hafs fallback:`, err);
+    }
+  }
+
+  // 5. Primary Hafs API: Al-Quran Cloud
   try {
     const urls = [
       `https://api.alquran.cloud/v1/surah/${surahNumber}/quran-uthmani`,
@@ -304,9 +447,9 @@ export async function fetchSurahAyahs(surahNumber: number): Promise<AyahItem[]> 
               text: cleanBismillah(a.text || '', surahNumber),
             }));
 
-            memoryCache[surahNumber] = ayahs;
+            memoryCache[cacheKey] = ayahs;
             try {
-              localStorage.setItem(`quran_surah_${surahNumber}_uthmani`, JSON.stringify(ayahs));
+              localStorage.setItem(storageKey, JSON.stringify(ayahs));
             } catch (e) {}
             return ayahs;
           }
@@ -319,7 +462,7 @@ export async function fetchSurahAyahs(surahNumber: number): Promise<AyahItem[]> 
     console.warn(`AlQuran Cloud API error for surah ${surahNumber}:`, err);
   }
 
-  // 5. Fallback API: Quran.com API v4 (highly available, fast CDN)
+  // 6. Fallback API: Quran.com API v4
   try {
     const fallbackUrl = `https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${surahNumber}`;
     const response = await fetch(fallbackUrl);
@@ -332,9 +475,9 @@ export async function fetchSurahAyahs(surahNumber: number): Promise<AyahItem[]> 
           text: cleanBismillah((v.text_uthmani || '').trim(), surahNumber),
         }));
 
-        memoryCache[surahNumber] = ayahs;
+        memoryCache[cacheKey] = ayahs;
         try {
-          localStorage.setItem(`quran_surah_${surahNumber}_uthmani`, JSON.stringify(ayahs));
+          localStorage.setItem(storageKey, JSON.stringify(ayahs));
         } catch (e) {}
         return ayahs;
       }
@@ -343,10 +486,62 @@ export async function fetchSurahAyahs(surahNumber: number): Promise<AyahItem[]> 
     console.error(`Quran.com API fallback failed for surah ${surahNumber}:`, err);
   }
 
-  // 6. If bundled partial exists, use it
   if (BUNDLED_SURAHS[surahNumber]) {
     return BUNDLED_SURAHS[surahNumber];
   }
 
   throw new Error(`تعذر تحميل آيات السورة رقم ${surahNumber}`);
+}
+
+/**
+ * Fetches millisecond-accurate Ayah timings from mp3quran.net for Qalun & timed Warsh reciters
+ */
+export async function fetchAyahTimings(
+  readId: number,
+  surahNumber: number
+): Promise<AyahTiming[]> {
+  const cacheKey = `${readId}_${surahNumber}`;
+  if (timingCache[cacheKey]) {
+    return timingCache[cacheKey];
+  }
+
+  const storageKey = `quran_timings_${cacheKey}`;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const cached = localStorage.getItem(storageKey);
+      if (cached) {
+        const parsed: AyahTiming[] = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          timingCache[cacheKey] = parsed;
+          return parsed;
+        }
+      }
+    }
+  } catch {
+    // ignore storage read errors
+  }
+
+  const url = `https://www.mp3quran.net/api/v3/ayat_timing?surah=${surahNumber}&read=${readId}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`تعذر تحميل توقيت الآيات للقارئ (${readId})`);
+  }
+  const data = await response.json();
+  if (!Array.isArray(data)) return [];
+
+  const timings: AyahTiming[] = data
+    .filter((item: any) => typeof item.ayah === 'number' && typeof item.start_time === 'number' && typeof item.end_time === 'number')
+    .map((item: any) => ({
+      ayah: item.ayah,
+      start_time: item.start_time,
+      end_time: item.end_time,
+    }));
+
+  timingCache[cacheKey] = timings;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(timings));
+  } catch {
+    // ignore
+  }
+  return timings;
 }

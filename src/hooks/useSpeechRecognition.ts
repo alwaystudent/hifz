@@ -7,7 +7,7 @@ interface IWindow extends Window {
 
 export interface UseSpeechRecognitionOptions {
   lang?: string;
-  onTranscript?: (transcript: string, isFinal: boolean) => void;
+  onTranscript?: (transcript: string, isFinal: boolean, alternatives: string[]) => void;
   onError?: (error: string) => void;
 }
 
@@ -34,7 +34,6 @@ export function useSpeechRecognition({
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
-  // Check support on mount
   useEffect(() => {
     const win = window as unknown as IWindow;
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
@@ -43,7 +42,6 @@ export function useSpeechRecognition({
     }
   }, []);
 
-  // Safe Audio visualizer pulse (does not lock microphone device or conflict with SpeechRecognition)
   const pulseAudioMeter = useCallback((active: boolean) => {
     if (levelIntervalRef.current) {
       clearInterval(levelIntervalRef.current);
@@ -56,7 +54,6 @@ export function useSpeechRecognition({
     }
 
     levelIntervalRef.current = setInterval(() => {
-      // Natural oscillating audio level between 25% and 80% when actively listening
       setAudioLevel((prev) => {
         const target = Math.floor(Math.random() * 55) + 25;
         return Math.round(prev * 0.3 + target * 0.7);
@@ -64,7 +61,6 @@ export function useSpeechRecognition({
     }, 120);
   }, []);
 
-  // Cleanly stops any active recognition instance
   const cleanupRecognition = useCallback(() => {
     if (restartTimerRef.current) {
       clearTimeout(restartTimerRef.current);
@@ -77,21 +73,20 @@ export function useSpeechRecognition({
         recognitionRef.current.onerror = null;
         recognitionRef.current.onend = null;
         recognitionRef.current.abort();
-      } catch (e) {
+      } catch {
         // ignore abort errors
       }
       recognitionRef.current = null;
     }
   }, []);
 
-  // Internal runner that creates a fresh recognition instance
   const createAndStartRecognition = useCallback(() => {
     const win = window as unknown as IWindow;
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRec) {
       setIsSupported(false);
-      onErrorRef.current?.('متصفحك لا يدعم التعرف الصوتي المباشر. يمكنك استخدام التسميع باللمس أو التخطي.');
+      onErrorRef.current?.('متصفحك لا يدعم التعرف الصوتي المباشر. يمكنك النقر على الكلمات أو استخدام التخطي.');
       return;
     }
 
@@ -102,7 +97,7 @@ export function useSpeechRecognition({
       recognition.lang = lang;
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.maxAlternatives = 3;
+      recognition.maxAlternatives = 5;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -119,68 +114,81 @@ export function useSpeechRecognition({
       };
 
       recognition.onresult = (event: any) => {
-        // Bump audio visualizer on voice results
         setAudioLevel((prev) => Math.min(100, Math.max(prev, 65) + 15));
 
+        const primaryParts: string[] = [];
+        const altBuckets: string[][] = [[], [], [], [], []];
+        let hasFinal = false;
         let currentInterim = '';
-        let currentFinal = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const result = event.results[i];
-          const text = result[0]?.transcript || '';
+          const primary = (result[0]?.transcript || '').trim();
+          if (!primary) continue;
+
           if (result.isFinal) {
-            currentFinal += text + ' ';
+            hasFinal = true;
+            primaryParts.push(primary);
           } else {
-            currentInterim += text;
+            currentInterim += (currentInterim ? ' ' : '') + primary;
+          }
+
+          for (let a = 0; a < 5; a++) {
+            const altText = (result[a]?.transcript || primary).trim();
+            if (altText) {
+              altBuckets[a].push(altText);
+            }
           }
         }
 
-        const trimmedFinal = currentFinal.trim();
-        const trimmedInterim = currentInterim.trim();
+        const primaryCombined = primaryParts.join(' ').trim();
+        const combinedAlts = Array.from(
+          new Set(
+            [
+              primaryCombined,
+              currentInterim.trim(),
+              ...altBuckets.map((b) => b.join(' ').trim()),
+            ].filter(Boolean)
+          )
+        );
 
-        if (trimmedFinal) {
-          setTranscript((prev) => (prev ? `${prev} ${trimmedFinal}` : trimmedFinal));
+        if (hasFinal && primaryCombined) {
+          setTranscript((prev) => (prev ? `${prev} ${primaryCombined}` : primaryCombined));
           setInterimTranscript('');
-          onTranscriptRef.current?.(trimmedFinal, true);
-        } else if (trimmedInterim) {
+          onTranscriptRef.current?.(primaryCombined, true, combinedAlts);
+        } else if (currentInterim.trim()) {
+          const trimmedInterim = currentInterim.trim();
           setInterimTranscript(trimmedInterim);
-          onTranscriptRef.current?.(trimmedInterim, false);
+          onTranscriptRef.current?.(trimmedInterim, false, combinedAlts);
         }
       };
 
       recognition.onerror = (event: any) => {
         const error = event.error;
-        console.warn('Speech recognition status event:', error);
 
         if (error === 'not-allowed') {
           isIntentionalListeningRef.current = false;
           setIsListening(false);
           pulseAudioMeter(false);
-          setPermissionError('تم رفض إذن الميكروفون. يرجى السماح به في شريط عنوان المتصفح.');
+          setPermissionError('تم رفض إذن الميكروفون. يرجى السماح به من شريط عنوان المتصفح.');
           onErrorRef.current?.('يرجى السماح بصلاحية الميكروفون من إعدادات المتصفح.');
         } else if (error === 'audio-capture') {
           isIntentionalListeningRef.current = false;
           setIsListening(false);
           pulseAudioMeter(false);
           setPermissionError('تعذر التقاط الصوت من الميكروفون. تأكد من توصيل الميكروفون بشكل صحيح.');
-        } else if (error === 'no-speech') {
-          // Normal silence, will auto-recover
-        } else if (error === 'aborted') {
-          // Intentional stop or abort
         } else if (error === 'network') {
-          // In some offline states, provide soft feedback
-          onErrorRef.current?.('خدمة التعرف الصوتي تواجه بطء في الشبكة. جاري المتابعة...');
+          onErrorRef.current?.('جاري إعادة تنشيط خدمة التعرف الصوتي...');
         }
       };
 
       recognition.onend = () => {
         if (isIntentionalListeningRef.current) {
-          // Re-instantiate safely after small delay to maintain continuous listening
           restartTimerRef.current = setTimeout(() => {
             if (isIntentionalListeningRef.current) {
               createAndStartRecognition();
             }
-          }, 200);
+          }, 150);
         } else {
           setIsListening(false);
           pulseAudioMeter(false);
@@ -189,22 +197,19 @@ export function useSpeechRecognition({
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch (err: any) {
-      console.warn('Error starting speech recognition:', err);
+    } catch {
       setIsListening(false);
       pulseAudioMeter(false);
-      onErrorRef.current?.('تعذر بدء الاستماع. يمكنك الضغط على زر الميكروفون يدوياً للمحاولة.');
+      onErrorRef.current?.('تعذر بدء الاستماع. يمكنك الضغط على زر الميكروفون للمحاولة.');
     }
   }, [lang, cleanupRecognition, pulseAudioMeter]);
 
-  // Start listening (public method)
   const startListening = useCallback(() => {
     isIntentionalListeningRef.current = true;
     setPermissionError(null);
     createAndStartRecognition();
   }, [createAndStartRecognition]);
 
-  // Stop listening (public method)
   const stopListening = useCallback(() => {
     isIntentionalListeningRef.current = false;
     cleanupRecognition();
@@ -213,13 +218,11 @@ export function useSpeechRecognition({
     setInterimTranscript('');
   }, [cleanupRecognition, pulseAudioMeter]);
 
-  // Reset transcript
   const resetTranscript = useCallback(() => {
     setTranscript('');
     setInterimTranscript('');
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       isIntentionalListeningRef.current = false;

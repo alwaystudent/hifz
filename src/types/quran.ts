@@ -1,5 +1,13 @@
-export type StageType = 'stage1' | 'stage2' | 'stage3';
+export type StageType = 'stage1' | 'stage2' | 'stage3' | 'peer';
 export type StageMode = 'listen' | 'test';
+export type RiwayahId = 'hafs' | 'warsh' | 'qalun';
+
+export interface RiwayahMeta {
+  id: RiwayahId;
+  name: string;
+  shortName: string;
+  description: string;
+}
 
 export interface SurahMeta {
   number: number;
@@ -20,8 +28,31 @@ export interface Reciter {
   id: string;
   name: string;
   edition: string;
+  riwayah: RiwayahId;
   subfolder: string;
   description: string;
+  mp3QuranReadId?: number;
+  mp3QuranFolderUrl?: string;
+}
+
+export interface AyahTiming {
+  ayah: number;
+  start_time: number; // milliseconds
+  end_time: number;   // milliseconds
+}
+
+export interface PeerParticipant {
+  peerId: string;
+  name: string;
+  isMuted: boolean;
+  joinedAt: number;
+}
+
+export interface RoomPassageState {
+  surahNumber: number;
+  fromAyah: number;
+  toAyah: number;
+  riwayah: RiwayahId;
 }
 
 export interface QueueItem {

@@ -125,16 +125,23 @@ export function isTajweedSpeechMatch(
 ): boolean {
   if (!targetWord || !spokenToken) return false;
 
-  const targetClean = targetWord.cleanText;
-  const spokenClean = normalizeArabic(spokenToken);
+  const targetClean = targetWord.cleanText.replace(/\s+/g, '');
+  const rawTargetClean = targetWord.cleanText;
+  const spokenClean = normalizeArabic(spokenToken).replace(/\s+/g, '');
 
   if (!targetClean || !spokenClean) return false;
 
   // 1. Direct exact match of normalized Arabic
-  if (targetClean === spokenClean) return true;
+  if (targetClean === spokenClean || rawTargetClean === spokenToken) return true;
+
+  // 1b. Space-separated Uthmani normalized tokens (e.g. "يا ايها" vs "ايها" or "يايها")
+  if (rawTargetClean.includes(' ')) {
+    const parts = rawTargetClean.split(' ');
+    if (parts.some((p) => p === spokenClean)) return true;
+  }
 
   // 2. Attached conversational or Quranic prefixes (و، ف، ل، ب، ك، ال، وال، فال، بال)
-  const prefixes = ['و', 'ف', 'ب', 'ل', 'ك', 'ال', 'وال', 'فال', 'بال'];
+  const prefixes = ['و', 'ف', 'ب', 'ل', 'ك', 'ال', 'وال', 'فال', 'بال', 'ول', 'فل'];
   for (const p of prefixes) {
     if (spokenClean === p + targetClean) return true;
     if (targetClean === p + spokenClean) return true;
@@ -149,6 +156,9 @@ export function isTajweedSpeechMatch(
   }
 
   // 4. Word ending variations:
+  // - Plural Alif after Waw (آمنوا -> امنو / عملوا -> عملو)
+  if (targetClean.endsWith('وا') && spokenClean === targetClean.slice(0, -1)) return true;
+  if (spokenClean.endsWith('وا') && targetClean === spokenClean.slice(0, -1)) return true;
   // - Tanween vs Noon at end (e.g. كتاباً -> كتابا / كتابن / كتاب)
   if (spokenClean === targetClean + 'ن' || targetClean === spokenClean + 'ن') return true;
   if (spokenClean === targetClean + 'ا' || targetClean === spokenClean + 'ا') return true;
@@ -162,13 +172,13 @@ export function isTajweedSpeechMatch(
   // 5. Compound words (e.g. الحمدلله -> الحمد + لله, بسمالله -> بسم + الله)
   if (spokenClean.startsWith(targetClean) && nextWord) {
     const remainder = spokenClean.slice(targetClean.length);
-    if (remainder === nextWord.cleanText || remainder === normalizeArabic(nextWord.text)) {
+    const nextNorm = nextWord.cleanText.replace(/\s+/g, '');
+    if (remainder === nextNorm || remainder === normalizeArabic(nextWord.text).replace(/\s+/g, '')) {
       return true;
     }
   }
 
   // 6. Tajweed Idgham / Iqlab phonetic variants:
-  // e.g. "من" with "يعمل" might be pronounced and transcribed as "مي" or "مم" or combined
   if (targetClean === 'من' && nextWord) {
     const nextFirst = nextWord.cleanText.charAt(0);
     if (['ي', 'ن', 'م', 'و', 'ل', 'ر'].includes(nextFirst)) {
@@ -177,40 +187,46 @@ export function isTajweedSpeechMatch(
       }
     }
     if (nextFirst === 'ب') {
-      // Iqlab: "من بعد" -> "مم بعد"
       if (['مم', 'من'].includes(spokenClean)) return true;
     }
   }
 
-  // 6. Quranic spellings & orthography variants
+  // 7. Quranic spellings & orthography variants (Hafs + Warsh + Qalun)
   const orthographyVariants: Record<string, string[]> = {
+    بسم: ['باسم', 'بسم'],
+    باسم: ['بسم', 'باسم'],
     صلاه: ['صلوه', 'صلاه', 'الصلاه'],
     زكاه: ['زكوه', 'زكاه', 'الزكاه'],
     حياه: ['حيوه', 'حياه', 'الحياه'],
     ربا: ['ربوا', 'ربا', 'الربا'],
-    السموات: ['السماوات', 'السموات'],
-    سماوات: ['سموات', 'سماوات'],
+    السموات: ['السماوات', 'السموات', 'سموات', 'سماوات'],
+    سماوات: ['سموات', 'سماوات', 'السموات', 'السماوات'],
+    العالمين: ['العلمين', 'العالمين'],
     ملك: ['مالك', 'ملك'],
     مالك: ['ملك', 'مالك'],
     صرط: ['صراط', 'صرط'],
     صراط: ['صرط', 'صراط'],
-    الضالين: ['الضاالين', 'الضالين'],
+    الضالين: ['الضاالين', 'الضالين', 'ضالين'],
     طاها: ['طه', 'طاها'],
     طه: ['طاها', 'طه'],
     ياسين: ['يس', 'ياسين'],
     يس: ['ياسين', 'يس'],
-    كهيعص: ['كاف ها يا عين صاد', 'كهيعص'],
-    الم: ['الف لام ميم', 'الم'],
+    كهيعص: ['كاف', 'كهيعص'],
+    الم: ['الف', 'الم'],
+    يايها: ['ياايها', 'ايها', 'يايها'],
+    ياايها: ['يايها', 'ايها', 'ياايها'],
   };
 
   if (orthographyVariants[targetClean]?.includes(spokenClean)) return true;
   if (orthographyVariants[spokenClean]?.includes(targetClean)) return true;
 
-  // 7. True Levenshtein distance check (tolerance of 1 edit for words of 3+ letters)
+  // 8. True Levenshtein distance check with smart length scaling
   if (targetClean.length >= 3 && spokenClean.length >= 3) {
-    if (Math.abs(targetClean.length - spokenClean.length) <= 1) {
+    const maxLen = Math.max(targetClean.length, spokenClean.length);
+    const maxDist = maxLen >= 7 ? 2 : 1;
+    if (Math.abs(targetClean.length - spokenClean.length) <= maxDist) {
       const dist = levenshteinDistance(targetClean, spokenClean);
-      if (dist <= 1) return true;
+      if (dist <= maxDist) return true;
     }
   }
 

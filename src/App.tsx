@@ -8,8 +8,10 @@ import {
   StageProgressState,
   SessionReport,
   EvaluationRating,
+  RiwayahId,
+  RoomPassageState,
 } from './types/quran';
-import { SURAHS_LIST, RECITERS, fetchSurahAyahs } from './data/quranData';
+import { SURAHS_LIST, RECITERS, RIWAYAT_LIST, fetchSurahAyahs } from './data/quranData';
 import { Header } from './components/Header';
 import { SurahRangeSelector } from './components/SurahRangeSelector';
 import { SettingsModal } from './components/SettingsModal';
@@ -17,19 +19,42 @@ import { ReportsModal } from './components/ReportsModal';
 import { Stage1SheikRecitation } from './components/Stage1SheikRecitation';
 import { Stage2GradualFading } from './components/Stage2GradualFading';
 import { Stage3RealtimeReveal } from './components/Stage3RealtimeReveal';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { PeerTasmeeView } from './components/PeerTasmeeView';
+import { RefreshCw, AlertCircle, X } from 'lucide-react';
+
+function getInitialInviteRoom(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('room');
+  return code ? code.trim().toUpperCase() : null;
+}
 
 export default function App() {
-  const [currentStage, setCurrentStage] = useState<StageType>('stage1');
+  const [initialInviteRoomId] = useState<string | null>(getInitialInviteRoom);
+  const [currentStage, setCurrentStage] = useState<StageType>(
+    initialInviteRoomId ? 'peer' : 'stage1'
+  );
   const [autoStartMic, setAutoStartMic] = useState<boolean>(false);
+  const [stageNotice, setStageNotice] = useState<string | null>(null);
 
-  // Sequential Stage Progress (Stage 2 locked until Stage 1 completed; Stage 3 locked until Stage 2 completed)
+  // Selected Riwayah (Hafs | Warsh | Qalun)
+  const [riwayah, setRiwayah] = useState<RiwayahId>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('quran_riwayah');
+      if (saved === 'warsh' || saved === 'qalun' || saved === 'hafs') {
+        return saved;
+      }
+    }
+    return 'hafs';
+  });
+
+  // Sequential Stage Progress
   const [stageProgress, setStageProgress] = useState<StageProgressState>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('quran_stage_progress');
         return saved ? JSON.parse(saved) : { stage1: false, stage2: false, stage3: false };
-      } catch (e) {
+      } catch {
         return { stage1: false, stage2: false, stage3: false };
       }
     }
@@ -42,14 +67,14 @@ export default function App() {
       try {
         const saved = localStorage.getItem('quran_session_reports');
         return saved ? JSON.parse(saved) : [];
-      } catch (e) {
+      } catch {
         return [];
       }
     }
     return [];
   });
 
-  // Surah & Ayah range selection (default: Al-Fatihah 1 to 7)
+  // Surah & Ayah range selection
   const [selectedSurahNumber, setSelectedSurahNumber] = useState<number>(1);
   const [fromAyah, setFromAyah] = useState<number>(1);
   const [toAyah, setToAyah] = useState<number>(7);
@@ -59,8 +84,13 @@ export default function App() {
   const [isLoadingAyahs, setIsLoadingAyahs] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Reciter & Repetition settings
-  const [selectedReciter, setSelectedReciter] = useState<Reciter>(RECITERS[0]);
+  // Reciter matching current Riwayah
+  const [selectedReciter, setSelectedReciter] = useState<Reciter>(() => {
+    const initialRiwayah =
+      (typeof window !== 'undefined' && localStorage.getItem('quran_riwayah')) || 'hafs';
+    return RECITERS.find((r) => r.riwayah === initialRiwayah) || RECITERS[0];
+  });
+
   const [settings, setSettings] = useState<RepetitionSettings>({
     singleAyahRepeats: 3,
     linkRepeats: 3,
@@ -86,16 +116,30 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
 
-  // Persist stage progress
+  // Switch Riwayah & auto-select compatible reciter
+  const handleSelectRiwayah = useCallback((nextRiwayah: RiwayahId) => {
+    setRiwayah(nextRiwayah);
+    try {
+      localStorage.setItem('quran_riwayah', nextRiwayah);
+    } catch {
+      // ignore
+    }
+    setSelectedReciter((prev) => {
+      if (prev.riwayah === nextRiwayah) return prev;
+      return RECITERS.find((r) => r.riwayah === nextRiwayah) || RECITERS[0];
+    });
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('quran_stage_progress', JSON.stringify(stageProgress));
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
     }
   }, [stageProgress]);
 
-  // Sync Dark Mode class with HTML element
   useEffect(() => {
     const root = document.documentElement;
     if (isDarkMode) {
@@ -107,14 +151,14 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // Load Ayahs
-  const loadSurah = useCallback(async (surahNum: number) => {
+  // Load Ayahs for current Surah + Riwayah
+  const loadSurah = useCallback(async (surahNum: number, activeRiwayah: RiwayahId) => {
     setIsLoadingAyahs(true);
     setLoadError(null);
     try {
-      const data = await fetchSurahAyahs(surahNum);
+      const data = await fetchSurahAyahs(surahNum, activeRiwayah);
       setAyahs(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load surah ayahs:', err);
       setLoadError('تعذر تحميل نص السورة. يرجى التحقق من الاتصال بالإنترنت والمحاولة مجدداً.');
     } finally {
@@ -123,13 +167,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadSurah(selectedSurahNumber);
-  }, [selectedSurahNumber, loadSurah]);
+    loadSurah(selectedSurahNumber, riwayah);
+  }, [selectedSurahNumber, riwayah, loadSurah]);
 
   const currentSurahMeta: SurahMeta =
     SURAHS_LIST.find((s) => s.number === selectedSurahNumber) || SURAHS_LIST[0];
 
-  // Safeguard: Clamp fromAyah and toAyah to surah bounds when ayahs load
   useEffect(() => {
     if (ayahs.length > 0) {
       const maxAyahs = ayahs.length;
@@ -138,7 +181,6 @@ export default function App() {
     }
   }, [ayahs]);
 
-  // Handle Range Selection
   const handleSelectRange = (surahNum: number, from: number, to: number) => {
     setSelectedSurahNumber(surahNum);
     const validFrom = Math.min(from, to);
@@ -146,26 +188,40 @@ export default function App() {
     setFromAyah(validFrom);
     setToAyah(validTo);
 
-    // Reset progress for new range so the 3-stage sequence starts fresh
     setStageProgress({ stage1: false, stage2: false, stage3: false });
-    setCurrentStage('stage1');
+    if (currentStage !== 'peer') {
+      setCurrentStage('stage1');
+    }
     setAutoStartMic(false);
+    setStageNotice(null);
   };
 
-  // Stage transition handlers (automatic sequential progression)
+  const handleSyncPeerPassage = useCallback(
+    (passage: RoomPassageState) => {
+      setSelectedSurahNumber(passage.surahNumber);
+      setFromAyah(passage.fromAyah);
+      setToAyah(passage.toAyah);
+      if (passage.riwayah !== riwayah) {
+        handleSelectRiwayah(passage.riwayah);
+      }
+    },
+    [riwayah, handleSelectRiwayah]
+  );
+
   const handleAdvanceToStage2 = (options?: { autoStartMic?: boolean }) => {
     setStageProgress((prev) => ({ ...prev, stage1: true }));
     setCurrentStage('stage2');
     setAutoStartMic(!!options?.autoStartMic);
+    setStageNotice(null);
   };
 
   const handleAdvanceToStage3 = (options?: { autoStartMic?: boolean }) => {
     setStageProgress((prev) => ({ ...prev, stage2: true }));
     setCurrentStage('stage3');
     setAutoStartMic(!!options?.autoStartMic);
+    setStageNotice(null);
   };
 
-  // Skip stage handlers
   const handleSkipStage1 = () => {
     setStageProgress((prev) => ({ ...prev, stage1: true }));
     handleAdvanceToStage2({ autoStartMic: true });
@@ -181,25 +237,24 @@ export default function App() {
   };
 
   const handleManualSelectStage = (stage: StageType) => {
-    // Prevent skipping ahead if previous stage is not completed
     if (stage === 'stage2' && !stageProgress.stage1) {
-      alert('لا يمكنك الانتقال للمرحلة الثانية حتى تتم المرحلة الأولى أو تضغط على "تخطي المرحلة".');
+      setStageNotice('يرجى إتمام المرحلة الأولى أو الضغط على "تخطي للمرحلة ٢" للانتقال.');
       return;
     }
     if (stage === 'stage3' && !stageProgress.stage2) {
-      alert('لا يمكنك الانتقال للمرحلة الثالثة حتى تتم المرحلة الثانية أو تضغط على "تخطي المرحلة".');
+      setStageNotice('يرجى إتمام المرحلة الثانية أو الضغط على "تخطي للمرحلة ٣" للانتقال.');
       return;
     }
+    setStageNotice(null);
     setCurrentStage(stage);
     setAutoStartMic(false);
   };
 
-  // Save evaluation report and schedule spaced review
   const handleSaveReport = (rating: EvaluationRating, errorsCount: number, totalWords: number) => {
     let intervalDays = 5;
     if (rating === 'mutqan') intervalDays = 5;
     else if (rating === 'mutaraddid') intervalDays = 3;
-    else intervalDays = 1; // mutafallit: reminder due next day
+    else intervalDays = 1;
 
     const now = new Date();
     const nextDate = new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000);
@@ -214,7 +269,7 @@ export default function App() {
       rating,
       errorsCount,
       totalWords,
-      accuracyPercent: totalWords > 0 ? Math.max(0, Math.round(((totalWords - errorsCount) / totalWords) * 100)) : 100,
+      accuracyPercent: 100,
       nextReviewDate: nextDate.toISOString(),
       reviewIntervalDays: intervalDays,
       status: 'pending',
@@ -224,14 +279,15 @@ export default function App() {
       const updated = [newReport, ...prev];
       try {
         localStorage.setItem('quran_session_reports', JSON.stringify(updated));
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
       return updated;
     });
 
     setStageProgress((prev) => ({ ...prev, stage3: true }));
   };
 
-  // Launch a review test from the reports section
   const handleStartReviewSession = (surahNum: number, from: number, to: number) => {
     setSelectedSurahNumber(surahNum);
     setFromAyah(from);
@@ -246,29 +302,34 @@ export default function App() {
       const updated = prev.filter((r) => r.id !== id);
       try {
         localStorage.setItem('quran_session_reports', JSON.stringify(updated));
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
       return updated;
     });
   };
 
   const handleClearAllReports = () => {
-    if (window.confirm('هل أنت متأكد من رغبتك في مسح جميع التقارير المسجلة؟')) {
-      setReports([]);
-      try {
-        localStorage.removeItem('quran_session_reports');
-      } catch (e) {}
+    setReports([]);
+    try {
+      localStorage.removeItem('quran_session_reports');
+    } catch {
+      // ignore
     }
   };
 
   const dueReportsCount = reports.filter((r) => new Date(r.nextReviewDate) <= new Date()).length;
+  const activeRiwayahMeta = RIWAYAT_LIST.find((r) => r.id === riwayah) || RIWAYAT_LIST[0];
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#F9F6EE] dark:bg-[#111711] text-[#242D22] dark:text-[#F1F6F0] flex flex-col transition-colors selection:bg-[#52674B]/20 selection:text-[#1F271D] dark:selection:bg-[#738C6B]/40 dark:selection:text-white">
-      {/* Top Bar Header with Full Screen Width & Zero Overflow */}
+    <div className="h-dvh w-full max-w-full overflow-hidden bg-[#F9F6EE] dark:bg-[#111711] text-[#242D22] dark:text-[#F1F6F0] flex flex-col transition-colors selection:bg-[#52674B]/20 selection:text-[#1F271D] dark:selection:bg-[#738C6B]/40 dark:selection:text-white">
+      {/* Stationary Top Bar Header */}
       <Header
         currentStage={currentStage}
         onSelectStage={handleManualSelectStage}
         completedStages={stageProgress}
+        riwayah={riwayah}
+        onSelectRiwayah={handleSelectRiwayah}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
@@ -280,32 +341,40 @@ export default function App() {
         toAyah={toAyah}
       />
 
-      {/* Main Content Area - 100% Screen Width Responsive Canvas */}
-      <main className="flex-1 w-full max-w-full overflow-x-hidden px-3 sm:px-6 md:px-10 py-5 space-y-5">
-        {/* Loading State */}
+      {/* Non-blocking Stage Lock Notice */}
+      {stageNotice && (
+        <div className="shrink-0 w-full px-3 sm:px-6 md:px-10 pt-2">
+          <div className="rounded-xl px-3 py-2 bg-[#ECE4D4] dark:bg-[#1F2A1E] border border-[#D5CABB] dark:border-[#2F3F2D] text-xs font-semibold text-[#3D4D38] dark:text-[#C5D8C1] flex items-center justify-between">
+            <span>{stageNotice}</span>
+            <button onClick={() => setStageNotice(null)} className="p-0.5 hover:opacity-75">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Stationary Viewport Main Area (Internal Mushaf Scroll) */}
+      <main className="flex-1 min-h-0 w-full max-w-full overflow-hidden px-2 sm:px-3 md:px-4 py-1.5 flex flex-col">
         {isLoadingAyahs && (
-          <div className="w-full max-w-full flex flex-col items-center justify-center p-14 space-y-3 rounded-3xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] shadow-xs">
+          <div className="flex-1 w-full flex flex-col items-center justify-center p-10 space-y-3 rounded-2xl bg-[#F6F2EA] dark:bg-[#182117] border border-[#DDD3BF] dark:border-[#273525] shadow-xs">
             <RefreshCw className="h-7 w-7 text-[#52674B] dark:text-[#C5D8C1] animate-spin" />
             <div className="text-center">
               <h3 className="text-lg font-bold text-[#2B3527] dark:text-[#F1F6F0] font-scheherazade">
-                جاري فتح سورة {currentSurahMeta.name} في المصحف...
+                جاري فتح سورة {currentSurahMeta.name} برواية {activeRiwayahMeta.name}...
               </h3>
               <p className="text-xs text-[#6F7D6C] dark:text-[#9FB19B]">
-                تحميل النص الشريف بالرسم العثماني
+                تحميل النص الشريف بالرسم المعتمد
               </p>
             </div>
           </div>
         )}
 
-        {/* Error State */}
         {!isLoadingAyahs && loadError && (
-          <div className="w-full max-w-full rounded-2xl p-5 bg-[#8C524B]/10 border border-[#8C524B]/30 text-center space-y-2">
+          <div className="flex-1 w-full flex flex-col items-center justify-center rounded-2xl p-5 bg-[#8C524B]/10 border border-[#8C524B]/30 text-center space-y-2">
             <AlertCircle className="h-7 w-7 text-[#8C524B] mx-auto" />
-            <p className="text-xs text-[#8C524B] dark:text-[#F3C5C1] font-medium">
-              {loadError}
-            </p>
+            <p className="text-xs text-[#8C524B] dark:text-[#F3C5C1] font-medium">{loadError}</p>
             <button
-              onClick={() => loadSurah(selectedSurahNumber)}
+              onClick={() => loadSurah(selectedSurahNumber, riwayah)}
               className="px-4 py-1.5 text-xs font-bold rounded-xl bg-[#52674B] text-white hover:bg-[#43553D]"
             >
               إعادة المحاولة
@@ -313,9 +382,8 @@ export default function App() {
           </div>
         )}
 
-        {/* Quran Stages */}
         {!isLoadingAyahs && !loadError && (
-          <>
+          <div className="flex-1 min-h-0 w-full flex flex-col">
             {currentStage === 'stage1' && (
               <Stage1SheikRecitation
                 surah={currentSurahMeta}
@@ -359,26 +427,32 @@ export default function App() {
                 onOpenReports={() => setIsReportsModalOpen(true)}
               />
             )}
-          </>
+
+            {currentStage === 'peer' && (
+              <PeerTasmeeView
+                surah={currentSurahMeta}
+                ayahs={ayahs}
+                fromAyah={fromAyah}
+                toAyah={toAyah}
+                riwayah={riwayah}
+                initialInviteRoomId={initialInviteRoomId}
+                onSyncPassageToApp={handleSyncPeerPassage}
+                onExitPeerMode={() => setCurrentStage('stage1')}
+              />
+            )}
+          </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="w-full max-w-full border-t border-[#DDD3BF] dark:border-[#273525] bg-[#F6F2EA] dark:bg-[#182117] py-4 text-xs text-[#6F7D6C] dark:text-[#9FB19B] transition-colors">
-        <div className="w-full max-w-full px-3 sm:px-6 md:px-10 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-right">
-          <div className="flex items-center gap-2">
-            <span className="font-scheherazade text-sm font-bold text-[#2B3527] dark:text-[#F1F6F0]">
-              رتّـــل
-            </span>
-            <span>·</span>
-            <span>طريقة التكرار المنهجي التراكمي للقرآن الكريم مع المتابعة الدورية</span>
-          </div>
-
-          <div className="flex items-center gap-3 text-[#7F8C7C] dark:text-[#8FA18B]">
-            <span>برواية حفص عن عاصم</span>
-            <span>·</span>
-            <span>المصحف الشريف</span>
-          </div>
+      {/* Ultra-slim Stationary Footer */}
+      <footer className="shrink-0 w-full max-w-full border-t border-[#DDD3BF] dark:border-[#273525] bg-[#F6F2EA] dark:bg-[#182117] py-1 text-[10px] text-[#6F7D6C] dark:text-[#9FB19B]">
+        <div className="w-full max-w-full px-3 flex items-center justify-between gap-2">
+          <span className="font-scheherazade text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
+            رتّـــل
+          </span>
+          <span className="text-[#7F8C7C] dark:text-[#8FA18B] shrink-0">
+            برواية {activeRiwayahMeta.name}
+          </span>
         </div>
       </footer>
 
@@ -395,6 +469,8 @@ export default function App() {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        riwayah={riwayah}
+        onSelectRiwayah={handleSelectRiwayah}
         settings={settings}
         onUpdateSettings={setSettings}
         selectedReciter={selectedReciter}

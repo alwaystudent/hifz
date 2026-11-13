@@ -1,11 +1,13 @@
 import React from 'react';
-import { Reciter, RepetitionSettings } from '../types/quran';
-import { RECITERS } from '../data/quranData';
-import { Sliders, UserCheck, Clock, Gauge } from 'lucide-react';
+import { Reciter, RepetitionSettings, RiwayahId } from '../types/quran';
+import { RECITERS, RIWAYAT_LIST } from '../data/quranData';
+import { Sliders, UserCheck, Clock, Gauge, BookMarked } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  riwayah: RiwayahId;
+  onSelectRiwayah: (riwayah: RiwayahId) => void;
   settings: RepetitionSettings;
   onUpdateSettings: (newSettings: RepetitionSettings) => void;
   selectedReciter: Reciter;
@@ -15,6 +17,8 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
+  riwayah,
+  onSelectRiwayah,
   settings,
   onUpdateSettings,
   selectedReciter,
@@ -22,8 +26,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const filteredReciters = RECITERS.filter((r) => r.riwayah === riwayah);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-lg rounded-2xl bg-[#F9F6EE] dark:bg-[#162015] border border-[#DDD3BF] dark:border-[#2A3728] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
@@ -34,10 +43,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Sliders className="h-5 w-5 text-[#52674B] dark:text-[#C5D8C1]" />
             <div>
               <h2 className="text-base font-bold text-[#2B3527] dark:text-[#F1F6F0]">
-                إعدادات التكرار والقارئ
+                إعدادات الرواية والقارئ والتكرار
               </h2>
               <p className="text-xs text-[#6F7D6C] dark:text-[#9FB19B]">
-                تخصيص تكرارات الآيات والربط وسرعة التلاوة
+                اختر الرواية المعتمدة والقارئ وإعدادات التكرار والسرعة
               </p>
             </div>
           </div>
@@ -51,18 +60,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Content */}
         <div className="p-5 space-y-4 overflow-y-auto text-sm">
-          {/* Reciter selection */}
+          {/* Riwayah Selection */}
           <div>
             <label className="flex items-center gap-1.5 text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0] mb-2">
-              <UserCheck className="h-4 w-4 text-[#52674B] dark:text-[#C5D8C1]" />
-              القارئ المعتمد (المرحلة الأولى)
+              <BookMarked className="h-4 w-4 text-[#52674B] dark:text-[#C5D8C1]" />
+              الرواية القرآنية (الرسم والتلاوة)
             </label>
-            <div className="space-y-1.5">
-              {RECITERS.map((r) => (
+            <div className="grid grid-cols-3 gap-2">
+              {RIWAYAT_LIST.map((r) => (
                 <button
                   key={r.id}
+                  type="button"
+                  onClick={() => onSelectRiwayah(r.id)}
+                  className={`p-2.5 rounded-xl border text-center transition-colors ${
+                    riwayah === r.id
+                      ? 'border-[#52674B] bg-[#52674B] text-white shadow-xs'
+                      : 'border-[#D5CABB] dark:border-[#2F3F2D] bg-[#FDFCF9] dark:bg-[#111710] text-[#3D4D38] dark:text-[#C5D8C1] hover:bg-[#ECE4D4]'
+                  }`}
+                >
+                  <div className="text-xs font-bold">{r.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Reciter selection filtered by Riwayah */}
+          <div className="pt-2 border-t border-[#DDD3BF] dark:border-[#2A3728]">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0] mb-2">
+              <UserCheck className="h-4 w-4 text-[#52674B] dark:text-[#C5D8C1]" />
+              القارئ المعتمد ({RIWAYAT_LIST.find((x) => x.id === riwayah)?.name})
+            </label>
+            <div className="space-y-1.5">
+              {filteredReciters.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
                   onClick={() => onSelectReciter(r)}
-                  className={`w-full text-right p-2.5 rounded-xl border transition-all flex items-start justify-between ${
+                  className={`w-full text-right p-2.5 rounded-xl border transition-colors flex items-start justify-between ${
                     selectedReciter.id === r.id
                       ? 'border-[#52674B] bg-[#52674B]/15 text-[#2B3527] dark:text-[#F1F6F0]'
                       : 'border-[#D5CABB] dark:border-[#2F3F2D] bg-[#FDFCF9] dark:bg-[#111710] text-[#556450] dark:text-[#B7C7B2] hover:bg-[#ECE4D4] dark:hover:bg-[#202B1E]'
@@ -80,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                   </div>
                   {selectedReciter.id === r.id && (
-                    <span className="text-[#52674B] dark:text-[#C5D8C1] text-xs font-bold">
+                    <span className="text-[#52674B] dark:text-[#C5D8C1] text-xs font-bold shrink-0">
                       ✓ معتمد
                     </span>
                   )}
@@ -96,14 +130,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               أعداد التكرار المنهجي التراكمي
             </h3>
 
-            {/* Single Ayah repeats */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D]">
               <div>
                 <span className="font-semibold block text-xs text-[#2B3527] dark:text-[#F1F6F0]">
                   تكرار الآية الواحدة منفردة
-                </span>
-                <span className="text-[11px] text-[#6F7D6C] dark:text-[#9FB19B]">
-                  يقوم الشيخ بقراءة الآية وتكرارها أولاً
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -137,14 +167,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Cumulative Link repeats */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D]">
               <div>
                 <span className="font-semibold block text-xs text-[#2B3527] dark:text-[#F1F6F0]">
                   تكرار الربط التراكمي للآيات السابقة
-                </span>
-                <span className="text-[11px] text-[#6F7D6C] dark:text-[#9FB19B]">
-                  يعيد الآيات المتتالية معاً دون تكرار كل آية
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -178,14 +204,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Final Review repeats */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D]">
               <div>
                 <span className="font-semibold block text-xs text-[#2B3527] dark:text-[#F1F6F0]">
                   تكرار مراجعة كامل المقدار
-                </span>
-                <span className="text-[11px] text-[#6F7D6C] dark:text-[#9FB19B]">
-                  جولات التكرار الختامية بعد إتمام جميع الآيات
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -229,9 +251,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </label>
               <div className="grid grid-cols-3 gap-1">
                 {[
-                  { label: '0.8x هادئ', value: 0.8 },
-                  { label: '1.0x عادي', value: 1.0 },
-                  { label: '1.25x سريع', value: 1.25 },
+                  { label: '0.8x', value: 0.8 },
+                  { label: '1.0x', value: 1.0 },
+                  { label: '1.25x', value: 1.25 },
                 ].map((s) => (
                   <button
                     key={s.value}
@@ -252,7 +274,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div>
               <label className="flex items-center gap-1.5 text-xs font-semibold text-[#485643] dark:text-[#B7C7B2] mb-1.5">
                 <Clock className="h-4 w-4 text-[#52674B]" />
-                فترة السكون بين التكرارات
+                فترة السكون
               </label>
               <div className="grid grid-cols-4 gap-1">
                 {[0, 1, 2, 3].map((sec) => (
@@ -280,7 +302,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-end px-5 py-3 border-t border-[#DDD3BF] dark:border-[#2A3728] bg-[#EDE5D5] dark:bg-[#1D271B]">
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-bold rounded-xl bg-[#52674B] text-white hover:bg-[#43553D] shadow-sm transition-all"
+            className="px-5 py-2 text-xs font-bold rounded-xl bg-[#52674B] text-white hover:bg-[#43553D] shadow-sm transition-colors"
           >
             حفظ وإغلاق
           </button>
