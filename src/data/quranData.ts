@@ -123,8 +123,11 @@ export const RECITERS: Reciter[] = [
   },
 ];
 
+export const BASMALAH_HAFS = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ';
+export const BASMALAH_WARSH = 'بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ';
+
 export const SURAHS_LIST: SurahMeta[] = [
-  { number: 1, name: "الفاتحة", englishName: "Al-Faatiha", numberOfAyahs: 7, revelationType: "Meccan" },
+  { number: 1, name: "الفاتحة", englishName: "Al-Faatiha", numberOfAyahs: 6, revelationType: "Meccan" },
   { number: 2, name: "البقرة", englishName: "Al-Baqara", numberOfAyahs: 286, revelationType: "Medinan" },
   { number: 3, name: "آل عمران", englishName: "Aal-i-Imraan", numberOfAyahs: 200, revelationType: "Medinan" },
   { number: 4, name: "النساء", englishName: "An-Nisaa", numberOfAyahs: 176, revelationType: "Medinan" },
@@ -240,92 +243,90 @@ export const SURAHS_LIST: SurahMeta[] = [
   { number: 114, name: "الناس", englishName: "An-Naas", numberOfAyahs: 6, revelationType: "Meccan" },
 ];
 
-// High-fidelity pre-bundled Surahs for instant zero-latency loading
+// High-fidelity pre-bundled Surahs (King Fahd Complex QPC Uthmani script + Medina Mushaf pages)
 export const BUNDLED_SURAHS: Record<number, AyahItem[]> = {
-  // 1: Al-Fatihah
+  // 1: Al-Fatihah (Basmalah rendered independently above; Ayah 1 starts at Al-Hamdu lillah)
   1: [
-    { number: 1, numberInSurah: 1, text: "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ" },
-    { number: 2, numberInSurah: 2, text: "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ" },
-    { number: 3, numberInSurah: 3, text: "الرَّحْمَٰنِ الرَّحِيمِ" },
-    { number: 4, numberInSurah: 4, text: "مَالِكِ يَوْمِ الدِّينِ" },
-    { number: 5, numberInSurah: 5, text: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ" },
-    { number: 6, numberInSurah: 6, text: "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ" },
-    { number: 7, numberInSurah: 7, text: "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ" },
+    { number: 2, numberInSurah: 1, pageNumber: 1, juzNumber: 1, text: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ" },
+    { number: 3, numberInSurah: 2, pageNumber: 1, juzNumber: 1, text: "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ" },
+    { number: 4, numberInSurah: 3, pageNumber: 1, juzNumber: 1, text: "مَـٰلِكِ يَوْمِ ٱلدِّينِ" },
+    { number: 5, numberInSurah: 4, pageNumber: 1, juzNumber: 1, text: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ" },
+    { number: 6, numberInSurah: 5, pageNumber: 1, juzNumber: 1, text: "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ" },
+    { number: 7, numberInSurah: 6, pageNumber: 1, juzNumber: 1, text: "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ" },
   ],
   // 112: Al-Ikhlas
   112: [
-    { number: 6222, numberInSurah: 1, text: "قُلْ هُوَ اللَّهُ أَحَدٌ" },
-    { number: 6223, numberInSurah: 2, text: "اللَّهُ الصَّمَدُ" },
-    { number: 6224, numberInSurah: 3, text: "لَمْ يَلِدْ وَلَمْ يُولَدْ" },
-    { number: 6225, numberInSurah: 4, text: "وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ" },
+    { number: 6222, numberInSurah: 1, pageNumber: 604, juzNumber: 30, text: "قُلْ هُوَ ٱللَّهُ أَحَدٌ" },
+    { number: 6223, numberInSurah: 2, pageNumber: 604, juzNumber: 30, text: "ٱللَّهُ ٱلصَّمَدُ" },
+    { number: 6224, numberInSurah: 3, pageNumber: 604, juzNumber: 30, text: "لَمْ يَلِدْ وَلَمْ يُولَدْ" },
+    { number: 6225, numberInSurah: 4, pageNumber: 604, juzNumber: 30, text: "وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ" },
   ],
   // 113: Al-Falaq
   113: [
-    { number: 6226, numberInSurah: 1, text: "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ" },
-    { number: 6227, numberInSurah: 2, text: "مِنْ شَرِّ مَا خَلَقَ" },
-    { number: 6228, numberInSurah: 3, text: "وَمِنْ شَرِّ غَاسِقٍ إِذَا وَقَبَ" },
-    { number: 6229, numberInSurah: 4, text: "وَمِنْ شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ" },
-    { number: 6230, numberInSurah: 5, text: "وَمِنْ شَرِّ حَاسِدٍ إِذَا حَسَدَ" },
+    { number: 6226, numberInSurah: 1, pageNumber: 604, juzNumber: 30, text: "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ" },
+    { number: 6227, numberInSurah: 2, pageNumber: 604, juzNumber: 30, text: "مِن شَرِّ مَا خَلَقَ" },
+    { number: 6228, numberInSurah: 3, pageNumber: 604, juzNumber: 30, text: "وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ" },
+    { number: 6229, numberInSurah: 4, pageNumber: 604, juzNumber: 30, text: "وَمِن شَرِّ ٱلنَّفَّـٰثَـٰتِ فِى ٱلْعُقَدِ" },
+    { number: 6230, numberInSurah: 5, pageNumber: 604, juzNumber: 30, text: "وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ" },
   ],
   // 114: An-Nas
   114: [
-    { number: 6231, numberInSurah: 1, text: "قُلْ أَعُوذُ بِرَبِّ النَّاسِ" },
-    { number: 6232, numberInSurah: 2, text: "مَلِكِ النَّاسِ" },
-    { number: 6233, numberInSurah: 3, text: "إِلَٰهِ النَّاسِ" },
-    { number: 6234, numberInSurah: 4, text: "مِنْ شَرِّ الْوَسْوَاسِ الْخَنَّاسِ" },
-    { number: 6235, numberInSurah: 5, text: "الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ" },
-    { number: 6236, numberInSurah: 6, text: "مِنَ الْجِنَّةِ وَالنَّاسِ" },
+    { number: 6231, numberInSurah: 1, pageNumber: 604, juzNumber: 30, text: "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ" },
+    { number: 6232, numberInSurah: 2, pageNumber: 604, juzNumber: 30, text: "مَلِكِ ٱلنَّاسِ" },
+    { number: 6233, numberInSurah: 3, pageNumber: 604, juzNumber: 30, text: "إِلَـٰهِ ٱلنَّاسِ" },
+    { number: 6234, numberInSurah: 4, pageNumber: 604, juzNumber: 30, text: "مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ" },
+    { number: 6235, numberInSurah: 5, pageNumber: 604, juzNumber: 30, text: "ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ" },
+    { number: 6236, numberInSurah: 6, pageNumber: 604, juzNumber: 30, text: "مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ" },
   ],
   // 67: Al-Mulk (first 10 ayahs bundled)
   67: [
-    { number: 5242, numberInSurah: 1, text: "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ" },
-    { number: 5243, numberInSurah: 2, text: "الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا وَهُوَ الْعَزِيزُ الْغَفُورُ" },
-    { number: 5244, numberInSurah: 3, text: "الَّذِي خَلَقَ سَبْعَ سَمَاوَاتٍ طِبَاقًا مَّا تَرَىٰ فِي خَلْقِ الرَّحْمَٰنِ مِن تَفَاوُتٍ فَارْجِعِ الْبَصَرَ هَلْ تَرَىٰ مِن فُطُورٍ" },
-    { number: 5245, numberInSurah: 4, text: "ثُمَّ ارْجِعِ الْبَصَرَ كَرَّتَيْنِ يَنقَلِبْ إِلَيْكَ الْبَصَرُ خَاسِئًا وَهُوَ حَسِيرٌ" },
-    { number: 5246, numberInSurah: 5, text: "وَلَقَدْ زَيَّنَّا السَّمَاءَ الدُّنْيَا بِمَصَابِيحَ وَجَعَلْنَاهَا رُجُومًا لِّلشَّيَاطِينِ وَأَعْتَدْنَا لَهُمْ عَذَابَ السَّعِيرِ" },
-    { number: 5247, numberInSurah: 6, text: "وَلِلَّذِينَ كَفَرُوا بِرَبِّهِمْ عَذَابُ جَهَنَّمَ وَبِئْسَ الْمَصِيرُ" },
-    { number: 5248, numberInSurah: 7, text: "إِذَا أُلْقُوا فِيهَا سَمِعُوا لَهَا شَهِيقًا وَهِيَ تَفُورُ" },
-    { number: 5249, numberInSurah: 8, text: "تَكَادُ تَمَيَّزُ مِنَ الْغَيْظِ كُلَّمَا أُلْقِيَ فِيهَا فَوْجٌ سَأَلَهُمْ خَزَنَتُهَا أَلَمْ يَأْتِكُمْ نَذِيرٌ" },
-    { number: 5250, numberInSurah: 9, text: "قَالُوا بَلَىٰ قَدْ جَاءَنَا نَذِيرٌ فَكَذَّبْنَا وَقُلْنَا مَا نَزَّلَ اللَّهُ مِن شَيْءٍ إِنْ أَنتُمْ إِلَّا فِي ضَلَالٍ كَبِيرٍ" },
-    { number: 5251, numberInSurah: 10, text: "وَقَالُوا لَوْ كُنَّا نَسْمَعُ أَوْ نَعْقِلُ مَا كُنَّا فِي أَصْحَابِ السَّعِيرِ" },
+    { number: 5242, numberInSurah: 1, pageNumber: 562, juzNumber: 29, text: "تَبَـٰرَكَ ٱلَّذِى بِيَدِهِ ٱلْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَىْءٍ قَدِيرٌ" },
+    { number: 5243, numberInSurah: 2, pageNumber: 562, juzNumber: 29, text: "ٱلَّذِى خَلَقَ ٱلْمَوْتَ وَٱلْحَيَوٰةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ ٱلْعَزِيزُ ٱلْغَفُورُ" },
+    { number: 5244, numberInSurah: 3, pageNumber: 562, juzNumber: 29, text: "ٱلَّذِى خَلَقَ سَبْعَ سَمَـٰوَٰتٍ طِبَاقًا ۖ مَّا تَرَىٰ فِى خَلْقِ ٱلرَّحْمَـٰنِ مِن تَفَـٰوُتٍ ۖ فَٱرْجِعِ ٱلْبَصَرَ هَلْ تَرَىٰ مِن فُطُورٍ" },
+    { number: 5245, numberInSurah: 4, pageNumber: 562, juzNumber: 29, text: "ثُمَّ ٱرْجِعِ ٱلْبَصَرَ كَرَّتَيْنِ يَنقَلِبْ إِلَيْكَ ٱلْبَصَرُ خَاسِئًا وَهُوَ حَسِيرٌ" },
+    { number: 5246, numberInSurah: 5, pageNumber: 562, juzNumber: 29, text: "وَلَقَدْ زَيَّنَّا ٱلسَّمَآءَ ٱلدُّنْيَا بِمَصَـٰبِيحَ وَجَعَلْنَـٰهَا رُجُومًا لِّلشَّيَـٰطِينِ ۖ وَأَعْتَدْنَا لَهُمْ عَذَابَ ٱلسَّعِيرِ" },
+    { number: 5247, numberInSurah: 6, pageNumber: 562, juzNumber: 29, text: "وَلِلَّذِينَ كَفَرُوا۟ بِرَبِّهِمْ عَذَابُ جَهَنَّمَ ۖ وَبِئْسَ ٱلْمَصِيرُ" },
+    { number: 5248, numberInSurah: 7, pageNumber: 562, juzNumber: 29, text: "إِذَآ أُلْقُوا۟ فِيهَا سَمِعُوا۟ لَهَا شَهِيقًا وَهِىَ تَفُورُ" },
+    { number: 5249, numberInSurah: 8, pageNumber: 562, juzNumber: 29, text: "تَكَادُ تَمَيَّزُ مِنَ ٱلْغَيْظِ ۖ كُلَّمَآ أُلْقِىَ فِيهَا فَوْجٌ سَأَلَهُمْ خَزَنَتُهَآ أَلَمْ يَأْتِكُمْ نَذِيرٌ" },
+    { number: 5250, numberInSurah: 9, pageNumber: 562, juzNumber: 29, text: "قَالُوا۟ بَلَىٰ قَدْ جَآءَنَا نَذِيرٌ فَكَذَّبْنَا وَقُلْنَا مَا نَزَّلَ ٱللَّهُ مِن شَىْءٍ إِنْ أَنتُمْ إِلَّا فِى ضَلَـٰلٍ كَبِيرٍ" },
+    { number: 5251, numberInSurah: 10, pageNumber: 562, juzNumber: 29, text: "وَقَالُوا۟ لَوْ كُنَّا نَسْمَعُ أَوْ نَعْقِلُ مَا كُنَّا فِىٓ أَصْحَـٰبِ ٱلسَّعِيرِ" },
   ],
   // 108: Al-Kawthar
   108: [
-    { number: 6205, numberInSurah: 1, text: "إِنَّا أَعْطَيْنَاكَ الْكَوْثَرَ" },
-    { number: 6206, numberInSurah: 2, text: "فَصَلِّ لِرَبِّكَ وَانْحَرْ" },
-    { number: 6207, numberInSurah: 3, text: "إِنَّ شَانِئَكَ هُوَ الْأَبْتَرُ" },
+    { number: 6205, numberInSurah: 1, pageNumber: 602, juzNumber: 30, text: "إِنَّآ أَعْطَيْنَـٰكَ ٱلْكَوْثَرَ" },
+    { number: 6206, numberInSurah: 2, pageNumber: 602, juzNumber: 30, text: "فَصَلِّ لِرَبِّكَ وَٱنْحَرْ" },
+    { number: 6207, numberInSurah: 3, pageNumber: 602, juzNumber: 30, text: "إِنَّ شَانِئَكَ هُوَ ٱلْأَبْتَرُ" },
   ],
   // 103: Al-Asr
   103: [
-    { number: 6177, numberInSurah: 1, text: "وَالْعَصْرِ" },
-    { number: 6178, numberInSurah: 2, text: "إِنَّ الْإِنسَانَ لَفِي خُسْرٍ" },
-    { number: 6179, numberInSurah: 3, text: "إِلَّا الَّذِينَ آمَنُوا وَعَمِلُوا الصَّالِحَاتِ وَتَوَاصَوْا بِالْحَقِّ وَتَوَاصَوْا بِالصَّبْرِ" },
+    { number: 6177, numberInSurah: 1, pageNumber: 601, juzNumber: 30, text: "وَٱلْعَصْرِ" },
+    { number: 6178, numberInSurah: 2, pageNumber: 601, juzNumber: 30, text: "إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ" },
+    { number: 6179, numberInSurah: 3, pageNumber: 601, juzNumber: 30, text: "إِلَّا ٱلَّذِينَ ءَامَنُوا۟ وَعَمِلُوا۟ ٱلصَّـٰلِحَـٰتِ وَتَوَاصَوْا۟ بِٱلْحَقِّ وَتَوَاصَوْا۟ بِٱلصَّبْرِ" },
   ],
   // 97: Al-Qadr
   97: [
-    { number: 6125, numberInSurah: 1, text: "إِنَّا أَنزَلْنَاهُ فِي لَيْلَةِ الْقَدْرِ" },
-    { number: 6126, numberInSurah: 2, text: "وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَدْرِ" },
-    { number: 6127, numberInSurah: 3, text: "لَيْلَةُ الْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ" },
-    { number: 6128, numberInSurah: 4, text: "تَنَزَّلُ الْمَلَائِكَةُ وَالرُّوحُ فِيهَا بِإِذْنِ رَبِّهِم مِّن كُلِّ أَمْرٍ" },
-    { number: 6129, numberInSurah: 5, text: "سَلَامٌ هِيَ حَتَّىٰ مَطْلَعِ الْفَجْرِ" },
+    { number: 6125, numberInSurah: 1, pageNumber: 598, juzNumber: 30, text: "إِنَّآ أَنزَلْنَـٰهُ فِى لَيْلَةِ ٱلْقَدْرِ" },
+    { number: 6126, numberInSurah: 2, pageNumber: 598, juzNumber: 30, text: "وَمَآ أَدْرَىٰكَ مَا لَيْلَةُ ٱلْقَدْرِ" },
+    { number: 6127, numberInSurah: 3, pageNumber: 598, juzNumber: 30, text: "لَيْلَةُ ٱلْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ" },
+    { number: 6128, numberInSurah: 4, pageNumber: 598, juzNumber: 30, text: "تَنَزَّلُ ٱلْمَلَـٰٓئِكَةُ وَٱلرُّوحُ فِيهَا بِإِذْنِ رَبِّهِم مِّن كُلِّ أَمْرٍ" },
+    { number: 6129, numberInSurah: 5, pageNumber: 598, juzNumber: 30, text: "سَلَـٰمٌ هِىَ حَتَّىٰ مَطْلَعِ ٱلْفَجْرِ" },
   ]
 };
 
 export const BUNDLED_SURAHS_WARSH: Record<number, AyahItem[]> = {
   1: [
-    { number: 1, numberInSurah: 1, text: "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ" },
-    { number: 2, numberInSurah: 2, text: "اِ۬لْحَمْدُ لِلهِ رَبِّ اِ۬لْعَٰلَمِينَ" },
-    { number: 3, numberInSurah: 3, text: "اَ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ" },
-    { number: 4, numberInSurah: 4, text: "مَلِكِ يَوْمِ اِ۬لدِّينِۖ" },
-    { number: 5, numberInSurah: 5, text: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُۖ" },
-    { number: 6, numberInSurah: 6, text: "اُ۪هْدِنَا اَ۬لصِّرَٰطَ اَ۬لْمُسْتَقِيمَ" },
-    { number: 7, numberInSurah: 7, text: "صِرَٰطَ اَ۬لذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ اِ۬لْمَغْضُوبِ عَلَيْهِمْ وَلَا اَ۬لضَّآلِّينَۖ" },
+    { number: 2, numberInSurah: 1, pageNumber: 1, juzNumber: 1, text: "اِ۬لْحَمْدُ لِلهِ رَبِّ اِ۬لْعَٰلَمِينَ" },
+    { number: 3, numberInSurah: 2, pageNumber: 1, juzNumber: 1, text: "اَ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ" },
+    { number: 4, numberInSurah: 3, pageNumber: 1, juzNumber: 1, text: "مَلِكِ يَوْمِ اِ۬لدِّينِۖ" },
+    { number: 5, numberInSurah: 4, pageNumber: 1, juzNumber: 1, text: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُۖ" },
+    { number: 6, numberInSurah: 5, pageNumber: 1, juzNumber: 1, text: "اُ۪هْدِنَا اَ۬لصِّرَٰطَ اَ۬لْمُسْتَقِيمَ" },
+    { number: 7, numberInSurah: 6, pageNumber: 1, juzNumber: 1, text: "صِرَٰطَ اَ۬لذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ اِ۬لْمَغْضُوبِ عَلَيْهِمْ وَلَا اَ۬لضَّآلِّينَۖ" },
   ],
   112: [
-    { number: 6222, numberInSurah: 1, text: "قُلْ هُوَ اَ۬للَّهُ أَحَدٌۖ" },
-    { number: 6223, numberInSurah: 2, text: "اِ۬للَّهُ اُ۬لصَّمَدُۖ" },
-    { number: 6224, numberInSurah: 3, text: "لَمْ يَلِدْ وَلَمْ يُولَدْۖ" },
-    { number: 6225, numberInSurah: 4, text: "وَلَمْ يَكُن لَّهُۥ كُفُؤاً اَحَدࣱۖ" },
+    { number: 6222, numberInSurah: 1, pageNumber: 604, juzNumber: 30, text: "قُلْ هُوَ اَ۬للَّهُ أَحَدٌۖ" },
+    { number: 6223, numberInSurah: 2, pageNumber: 604, juzNumber: 30, text: "اِ۬للَّهُ اُ۬لصَّمَدُۖ" },
+    { number: 6224, numberInSurah: 3, pageNumber: 604, juzNumber: 30, text: "لَمْ يَلِدْ وَلَمْ يُولَدْۖ" },
+    { number: 6225, numberInSurah: 4, pageNumber: 604, juzNumber: 30, text: "وَلَمْ يَكُن لَّهُۥ كُفُؤاً اَحَدࣱۖ" },
   ],
 };
 
@@ -334,13 +335,14 @@ const memoryCache: Record<string, AyahItem[]> = {};
 const timingCache: Record<string, AyahTiming[]> = {};
 
 /**
- * Normalizes Bismillah from first verse if bundled together (except Al-Fatihah and At-Tawbah)
+ * Strips leading Bismillah if bundled inline in Ayah 1 (Basmalah is rendered independently above)
  */
 function cleanBismillah(text: string, surahNumber: number): string {
   if (surahNumber === 1 || surahNumber === 9) return text.replace(/\u200F|\u200E/g, '').trim();
   const cleaned = text.replace(/\u200F|\u200E/g, '').trim();
   const patterns = [
     "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+    "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
     "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
     "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ",
   ];
@@ -353,8 +355,50 @@ function cleanBismillah(text: string, surahNumber: number): string {
 }
 
 /**
+ * For Al-Fatihah (Surah 1), renders Basmalah independently above and starts Ayah 1 at "الحمد لله رب العالمين"
+ */
+function normalizeSurah1Fatihah(ayahs: AyahItem[]): AyahItem[] {
+  if (ayahs.length === 7 && ayahs[0]?.text) {
+    const plain = ayahs[0].text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u200E\u200F]/g, '');
+    if (plain.includes('بسم') && plain.includes('الرحيم')) {
+      return ayahs.slice(1).map((item, idx) => ({
+        ...item,
+        numberInSurah: idx + 1,
+      }));
+    }
+  }
+  return ayahs;
+}
+
+/**
+ * Fetches Medina Mushaf (King Fahd Complex) page numbers & QPC Uthmani script via Quran.com API v4
+ */
+async function fetchKingFahdComplexSurah(surahNumber: number): Promise<AyahItem[] | null> {
+  try {
+    const url = `https://api.quran.com/api/v4/verses/by_chapter/${surahNumber}?words=false&fields=text_uthmani,page_number,juz_number&per_page=300`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (!Array.isArray(json.verses) || json.verses.length === 0) return null;
+
+    const ayahs: AyahItem[] = json.verses.map((v: any, idx: number) => ({
+      number: v.id || idx + 1,
+      numberInSurah: v.verse_number || idx + 1,
+      pageNumber: typeof v.page_number === 'number' ? v.page_number : undefined,
+      juzNumber: typeof v.juz_number === 'number' ? v.juz_number : undefined,
+      text: cleanBismillah(String(v.text_uthmani || '').trim(), surahNumber),
+    }));
+
+    return surahNumber === 1 ? normalizeSurah1Fatihah(ayahs) : ayahs;
+  } catch (err) {
+    console.warn(`King Fahd Complex / Quran.com v4 fetch failed for surah ${surahNumber}:`, err);
+    return null;
+  }
+}
+
+/**
  * Fetches all ayahs for a given Surah and Riwayah (hafs | warsh | qalun)
- * with multi-tier caching (memory -> bundled -> localStorage -> API).
+ * with King Fahd Complex (مجمع الملك فهد) as primary trusted source + multi-tier caching.
  */
 export async function fetchSurahAyahs(
   surahNumber: number,
@@ -367,8 +411,8 @@ export async function fetchSurahAyahs(
     return memoryCache[cacheKey];
   }
 
-  // 2. Check bundled surahs
-  if (riwayah === 'hafs' && BUNDLED_SURAHS[surahNumber]) {
+  // 2. Check bundled surahs (note: Surah 67 bundled only has first 10 ayahs; use full fetch if all ayahs needed)
+  if (riwayah === 'hafs' && BUNDLED_SURAHS[surahNumber] && surahNumber !== 67) {
     memoryCache[cacheKey] = BUNDLED_SURAHS[surahNumber];
     return BUNDLED_SURAHS[surahNumber];
   }
@@ -377,8 +421,8 @@ export async function fetchSurahAyahs(
     return BUNDLED_SURAHS_WARSH[surahNumber];
   }
 
-  // 3. Check localStorage cache
-  const storageKey = `quran_surah_${surahNumber}_${riwayah}_v1`;
+  // 3. Check localStorage cache (v2 includes King Fahd Complex pageNumber & Fatiha Ayah 1 fix)
+  const storageKey = `quran_surah_${surahNumber}_${riwayah}_v2`;
   try {
     if (typeof localStorage !== 'undefined') {
       const cached = localStorage.getItem(storageKey);
@@ -394,33 +438,55 @@ export async function fetchSurahAyahs(
     console.warn('LocalStorage read error:', err);
   }
 
-  // 4. Fetch authentic Warsh or Qalun edition from fawazahmed0 CDN
+  // 4. Fetch authentic Warsh or Qalun edition + enrich with Medina Mushaf page numbers
   if (riwayah === 'warsh' || riwayah === 'qalun') {
     const editionSlug = riwayah === 'warsh' ? 'ara-quranwarsh' : 'ara-quranqaloon';
     try {
-      const url = `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${editionSlug}/${surahNumber}.json`;
-      const response = await fetch(url);
-      if (response.ok) {
-        const json = await response.json();
+      const [editionResp, qpcAyahs] = await Promise.all([
+        fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${editionSlug}/${surahNumber}.json`),
+        fetchKingFahdComplexSurah(surahNumber),
+      ]);
+      if (editionResp.ok) {
+        const json = await editionResp.json();
         if (Array.isArray(json.chapter) && json.chapter.length > 0) {
-          const ayahs: AyahItem[] = json.chapter.map((v: any, idx: number) => ({
+          let ayahs: AyahItem[] = json.chapter.map((v: any, idx: number) => ({
             number: idx + 1,
             numberInSurah: v.verse || idx + 1,
             text: cleanBismillah(String(v.text || ''), surahNumber),
           }));
+          if (surahNumber === 1) {
+            ayahs = normalizeSurah1Fatihah(ayahs);
+          }
+          if (qpcAyahs && qpcAyahs.length === ayahs.length) {
+            ayahs = ayahs.map((a, idx) => ({
+              ...a,
+              pageNumber: qpcAyahs[idx]?.pageNumber,
+              juzNumber: qpcAyahs[idx]?.juzNumber,
+            }));
+          }
           memoryCache[cacheKey] = ayahs;
           try {
             localStorage.setItem(storageKey, JSON.stringify(ayahs));
-          } catch (e) {}
+          } catch {}
           return ayahs;
         }
       }
     } catch (err) {
-      console.warn(`Failed ${riwayah} edition fetch, trying Hafs fallback:`, err);
+      console.warn(`Failed ${riwayah} edition fetch, trying King Fahd Complex Hafs fallback:`, err);
     }
   }
 
-  // 5. Primary Hafs API: Al-Quran Cloud
+  // 5. Primary Trusted Source: King Fahd Complex QPC Uthmani (Quran.com API v4)
+  const qpcAyahs = await fetchKingFahdComplexSurah(surahNumber);
+  if (qpcAyahs && qpcAyahs.length > 0) {
+    memoryCache[cacheKey] = qpcAyahs;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(qpcAyahs));
+    } catch {}
+    return qpcAyahs;
+  }
+
+  // 6. Fallback Source: Al-Quran Cloud Uthmani (with page & juz metadata)
   try {
     const urls = [
       `https://api.alquran.cloud/v1/surah/${surahNumber}/quran-uthmani`,
@@ -441,16 +507,21 @@ export async function fetchSurahAyahs(
           }
 
           if (rawAyahs.length > 0) {
-            const ayahs: AyahItem[] = rawAyahs.map((a: any, idx: number) => ({
+            let ayahs: AyahItem[] = rawAyahs.map((a: any, idx: number) => ({
               number: a.number || idx + 1,
               numberInSurah: a.numberInSurah || idx + 1,
+              pageNumber: typeof a.page === 'number' ? a.page : undefined,
+              juzNumber: typeof a.juz === 'number' ? a.juz : undefined,
               text: cleanBismillah(a.text || '', surahNumber),
             }));
+            if (surahNumber === 1) {
+              ayahs = normalizeSurah1Fatihah(ayahs);
+            }
 
             memoryCache[cacheKey] = ayahs;
             try {
               localStorage.setItem(storageKey, JSON.stringify(ayahs));
-            } catch (e) {}
+            } catch {}
             return ayahs;
           }
         }
@@ -460,30 +531,6 @@ export async function fetchSurahAyahs(
     }
   } catch (err) {
     console.warn(`AlQuran Cloud API error for surah ${surahNumber}:`, err);
-  }
-
-  // 6. Fallback API: Quran.com API v4
-  try {
-    const fallbackUrl = `https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${surahNumber}`;
-    const response = await fetch(fallbackUrl);
-    if (response.ok) {
-      const json = await response.json();
-      if (Array.isArray(json.verses) && json.verses.length > 0) {
-        const ayahs: AyahItem[] = json.verses.map((v: any, idx: number) => ({
-          number: v.id || idx + 1,
-          numberInSurah: idx + 1,
-          text: cleanBismillah((v.text_uthmani || '').trim(), surahNumber),
-        }));
-
-        memoryCache[cacheKey] = ayahs;
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(ayahs));
-        } catch (e) {}
-        return ayahs;
-      }
-    }
-  } catch (err) {
-    console.error(`Quran.com API fallback failed for surah ${surahNumber}:`, err);
   }
 
   if (BUNDLED_SURAHS[surahNumber]) {

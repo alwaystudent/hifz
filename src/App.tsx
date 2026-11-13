@@ -174,7 +174,7 @@ export default function App() {
   // Surah & Ayah range selection
   const [selectedSurahNumber, setSelectedSurahNumber] = useState<number>(1);
   const [fromAyah, setFromAyah] = useState<number>(1);
-  const [toAyah, setToAyah] = useState<number>(7);
+  const [toAyah, setToAyah] = useState<number>(6);
 
   // Ayahs data
   const [ayahs, setAyahs] = useState<AyahItem[]>([]);
@@ -360,11 +360,11 @@ export default function App() {
 
   const handleManualSelectStage = (stage: StageType) => {
     if (stage === 'stage2' && !stageProgress.stage1) {
-      setStageNotice('يرجى إتمام المرحلة الأولى أو الضغط على "تخطي للمرحلة ٢" للانتقال.');
+      setStageNotice('أتمم المرحلة الأولى أو اضغط «للمرحلة ٢».');
       return;
     }
     if (stage === 'stage3' && !stageProgress.stage2) {
-      setStageNotice('يرجى إتمام المرحلة الثانية أو الضغط على "تخطي للمرحلة ٣" للانتقال.');
+      setStageNotice('أتمم المرحلة الثانية أو اضغط «للمرحلة ٣».');
       return;
     }
     setStageNotice(null);
@@ -596,7 +596,7 @@ export default function App() {
       <footer className="shrink-0 w-full max-w-full border-t border-[#DDD3BF] dark:border-[#273525] bg-[#F6F2EA] dark:bg-[#182117] py-1 text-[10px] text-[#6F7D6C] dark:text-[#9FB19B]">
         <div className="w-full max-w-full px-3 flex items-center justify-between gap-2">
           <span className="font-scheherazade text-xs font-bold text-[#2B3527] dark:text-[#F1F6F0]">
-            رتّـــل
+            أسرد
           </span>
           <span className="text-[#7F8C7C] dark:text-[#8FA18B] shrink-0">
             برواية {activeRiwayahMeta.name}

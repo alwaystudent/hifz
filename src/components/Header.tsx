@@ -1,6 +1,7 @@
 import React from 'react';
 import { RiwayahId, StageProgressState, StageType } from '../types/quran';
 import { RIWAYAT_LIST } from '../data/quranData';
+import { toArabicDigits } from '../utils/arabic';
 import {
   Volume2,
   Mic,
@@ -10,7 +11,7 @@ import {
   Sun,
   Settings,
   Compass,
-  FileText,
+  BarChart3,
   Lock,
   CheckCircle2,
   Phone,
@@ -62,22 +63,51 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="shrink-0 z-40 w-full max-w-full border-b border-[#DDD4C1] bg-[#F9F6EE] dark:border-[#2A3728] dark:bg-[#141A13] transition-colors">
-      {/* Row 1: Compact Brand, Riwayah Quick Switch & Utilities */}
-      <div className="w-full max-w-full flex flex-wrap items-center justify-between gap-1.5 px-2 sm:px-4 py-1 border-b border-[#DDD4C1]/50 dark:border-[#2A3728]/50">
-        {/* Brand */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#52674B]/10 text-[#52674B] dark:bg-[#738C6B]/20 dark:text-[#C5D8C1]">
-            <BookOpen className="h-3.5 w-3.5" />
+      {/* Row 1: Right (Brand + Reports + Surah + Riwayah) | Left (Membership + DarkMode + Settings) */}
+      <div className="w-full max-w-full flex flex-wrap items-center justify-between gap-1.5 px-2 sm:px-4 py-1 border-b border-[#DDD4C1]/60 dark:border-[#2A3728]/60">
+        {/* Right side (RTL start): Brand + Reports + Range + Riwayah */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Brand Frame */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-[#CFC3AD] dark:border-[#344532] bg-[#F2ECE0] dark:bg-[#1B241A] shrink-0">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#52674B] text-white">
+              <BookOpen className="h-3 w-3" />
+            </div>
+            <span className="font-scheherazade text-base sm:text-lg font-bold leading-none text-[#2B3527] dark:text-[#F1F6F0]">
+              أسرد
+            </span>
           </div>
-          <span className="font-scheherazade text-lg font-bold leading-none text-[#2B3527] dark:text-[#F1F6F0]">
-            رتّـــل
-          </span>
-        </div>
 
-        {/* Utility controls */}
-        <div className="flex items-center gap-1 flex-wrap justify-end">
-          {/* Quick Riwayah Switcher */}
-          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[#ECE5D5] dark:bg-[#1F2A1E] border border-[#DDD3BF] dark:border-[#2C3B29]">
+          {/* Reports Button on the Right with clearer BarChart3 icon */}
+          <button
+            onClick={onOpenReports}
+            className="relative flex items-center gap-1 text-[11px] font-bold text-[#3D4D38] dark:text-[#C5D8C1] bg-[#EFE8D9] dark:bg-[#1C261B] hover:bg-[#E4DAC5] dark:hover:bg-[#263424] px-2.5 py-1 rounded-lg border border-[#C7B99F] dark:border-[#384B36] shadow-2xs transition-colors"
+            title="سجل التقارير والمراجعة المجدولة"
+            aria-label="التقارير"
+          >
+            <BarChart3 className="h-3.5 w-3.5 text-[#52674B] dark:text-[#A4BA9E]" />
+            <span>التقارير</span>
+            {dueReportsCount > 0 && (
+              <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-[#8C524B] text-[9px] font-bold text-white">
+                {toArabicDigits(dueReportsCount)}
+              </span>
+            )}
+          </button>
+
+          {/* Framed Surah & Ayah Range Button */}
+          <button
+            onClick={onOpenRangeSelector}
+            className="flex items-center gap-1 text-[11px] font-bold text-[#3D4D38] dark:text-[#C5D8C1] bg-[#EFE8D9] dark:bg-[#1C261B] hover:bg-[#E4DAC5] dark:hover:bg-[#263424] px-2.5 py-1 rounded-lg border border-[#C7B99F] dark:border-[#384B36] shadow-2xs transition-colors"
+            title="تحديد السورة ونطاق الآيات"
+          >
+            <Compass className="h-3.5 w-3.5 text-[#52674B] dark:text-[#A4BA9E]" />
+            <span className="font-scheherazade text-xs leading-none">{surahName}</span>
+            <span className="text-[#6F7D6C] dark:text-[#9FB19B] text-[10px]">
+              ({toArabicDigits(fromAyah)}-{toArabicDigits(toAyah)})
+            </span>
+          </button>
+
+          {/* Framed Riwayah Switcher */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[#EFE8D9] dark:bg-[#1C261B] border border-[#C7B99F] dark:border-[#384B36] shadow-2xs">
             {RIWAYAT_LIST.map((r) => (
               <button
                 key={r.id}
@@ -87,107 +117,91 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-[#52674B] text-white shadow-xs'
                     : 'text-[#485643] dark:text-[#B7C7B2] hover:text-[#2B3527]'
                 }`}
-                title={`تبديل الرواية إلى ${r.name}`}
+                title={r.name}
               >
                 {r.shortName}
               </button>
             ))}
           </div>
+        </div>
 
-          {/* Reports Button */}
-          <button
-            onClick={onOpenReports}
-            className="relative flex items-center gap-1 text-[11px] font-semibold text-[#3D4D38] dark:text-[#C5D8C1] bg-[#ECE5D5]/80 dark:bg-[#1F2A1E] hover:bg-[#E2D8C3] dark:hover:bg-[#283726] px-2 py-1 rounded-lg border border-[#DDD3BF] dark:border-[#2C3B29] transition-colors"
-            title="سجل التقارير وجدول الاختبارات المجدولة"
-          >
-            <FileText className="h-3 w-3 text-[#52674B] dark:text-[#A4BA9E]" />
-            <span className="hidden md:inline">التقارير</span>
-            {dueReportsCount > 0 && (
-              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#8C524B] text-[9px] font-bold text-white">
-                {dueReportsCount}
-              </span>
-            )}
-          </button>
-
-          {/* Surah & Ayah Range Selector */}
-          <button
-            onClick={onOpenRangeSelector}
-            className="flex items-center gap-1 text-[11px] font-semibold text-[#3D4D38] dark:text-[#C5D8C1] bg-[#ECE5D5]/80 dark:bg-[#1F2A1E] hover:bg-[#E2D8C3] dark:hover:bg-[#283726] px-2 py-1 rounded-lg border border-[#DDD3BF] dark:border-[#2C3B29] transition-colors"
-            title="تحديد السورة ونطاق الآيات"
-          >
-            <Compass className="h-3 w-3 text-[#52674B] dark:text-[#A4BA9E]" />
-            <span className="font-scheherazade text-xs leading-none">سورة {surahName}</span>
-            <span className="text-[#8B9886] font-mono text-[10px]">({fromAyah}-{toAyah})</span>
-          </button>
-
+        {/* Left side (RTL end): Membership -> Dark Mode (to right of Settings) -> Settings (far left) */}
+        <div className="flex items-center gap-1 shrink-0">
           {/* Membership / Login Button */}
           <button
             onClick={onOpenAuth}
-            className={`flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+            className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border shadow-2xs transition-colors ${
               memberDisplayName
-                ? 'bg-[#52674B]/12 dark:bg-[#688260]/25 text-[#2B3527] dark:text-[#F1F6F0] border-[#52674B]/30 dark:border-[#738C6B]/40 hover:bg-[#52674B]/20'
-                : 'bg-[#52674B] text-white border-[#52674B] hover:bg-[#43553D]'
+                ? 'bg-[#52674B]/12 dark:bg-[#688260]/25 text-[#2B3527] dark:text-[#F1F6F0] border-[#52674B]/40 dark:border-[#738C6B]/50 hover:bg-[#52674B]/20'
+                : 'bg-[#52674B] text-white border-[#43553D] hover:bg-[#43553D]'
             }`}
-            title={memberDisplayName ? 'حساب العضوية والأصدقاء' : 'تسجيل عضوية جديدة أو دخول'}
+            title={memberDisplayName ? 'حسابي والأصدقاء' : 'تسجيل الدخول / العضوية'}
           >
             {memberDisplayName ? (
-              <UserCheck className="h-3 w-3 text-[#52674B] dark:text-[#C5D8C1]" />
+              <UserCheck className="h-3.5 w-3.5 text-[#52674B] dark:text-[#C5D8C1]" />
             ) : (
-              <UserPlus className="h-3 w-3" />
+              <UserPlus className="h-3.5 w-3.5" />
             )}
-            <span className="max-w-[90px] truncate">
-              {memberDisplayName ? memberDisplayName : 'عضوية / دخول'}
+            <span className="max-w-[85px] truncate">
+              {memberDisplayName ? memberDisplayName : 'دخول'}
             </span>
           </button>
 
-          {/* Settings Modal Toggle */}
-          <button
-            onClick={onOpenSettings}
-            className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#DDD3BF] dark:border-[#2C3B29] bg-[#F9F6EE] dark:bg-[#1A2319] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE5D5] dark:hover:bg-[#253223] transition-colors"
-            title="إعدادات الرواية والقارئ"
-            aria-label="إعدادات"
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
+          {/* Framed Utility Container: Dark Mode on the right of Settings, Settings on far left */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9] dark:bg-[#1C261B] shadow-2xs">
+            {/* Dark Mode Toggle (immediately to the right of Settings in RTL) */}
+            <button
+              onClick={onToggleDarkMode}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-[#F9F6EE] dark:bg-[#141A13] border border-[#DDD3BF] dark:border-[#2C3B29] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#E4DAC5] dark:hover:bg-[#253223] transition-colors"
+              title={isDarkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
+              aria-label="تبديل المظهر"
+            >
+              {isDarkMode ? (
+                <Sun className="h-3.5 w-3.5 text-[#E2B778]" />
+              ) : (
+                <Moon className="h-3.5 w-3.5 text-[#52674B]" />
+              )}
+            </button>
 
-          {/* Dark Mode Toggle */}
-          <button
-            onClick={onToggleDarkMode}
-            className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#DDD3BF] dark:border-[#2C3B29] bg-[#F9F6EE] dark:bg-[#1A2319] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE5D5] dark:hover:bg-[#253223] transition-colors"
-            title={isDarkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
-            aria-label="تبديل المظهر"
-          >
-            {isDarkMode ? <Sun className="h-3.5 w-3.5 text-[#E2B778]" /> : <Moon className="h-3.5 w-3.5 text-[#52674B]" />}
-          </button>
+            {/* Settings Modal Toggle (far top-left) */}
+            <button
+              onClick={onOpenSettings}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-[#F9F6EE] dark:bg-[#141A13] border border-[#DDD3BF] dark:border-[#2C3B29] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#E4DAC5] dark:hover:bg-[#253223] transition-colors"
+              title="الإعدادات"
+              aria-label="الإعدادات"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Row 2: Compact 3 Learning Stages + Peer Voice Call Mode */}
-      <div className="w-full max-w-full px-2 sm:px-4 py-1 bg-[#F5F1E6]/80 dark:bg-[#111710]/80">
-        <nav className="w-full grid grid-cols-2 sm:grid-cols-4 gap-1">
+      {/* Row 2: Framed Compact Navigation Tabs */}
+      <div className="w-full max-w-full px-2 sm:px-4 py-1 bg-[#F5F1E6]/90 dark:bg-[#111710]/90">
+        <nav className="w-full grid grid-cols-4 gap-1 p-0.5 rounded-xl border border-[#D4C7AE] dark:border-[#2D3D2B] bg-[#ECE4D4]/70 dark:bg-[#192218]">
           {/* Stage 1 */}
           <button
             onClick={() => onSelectStage('stage1')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg border text-[11px] font-bold transition-colors ${
               currentStage === 'stage1'
-                ? 'bg-[#52674B] text-white shadow-xs dark:bg-[#688260]'
-                : 'bg-[#ECE4D4]/70 dark:bg-[#1B2519]/70 text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] hover:bg-[#E2D8C3]'
+                ? 'bg-[#52674B] text-white border-[#43553D] shadow-xs dark:bg-[#688260]'
+                : 'bg-[#F9F6EE]/80 dark:bg-[#141B13] border-[#DDD3BF] dark:border-[#2B3A29] text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] hover:bg-[#E4DAC5]'
             }`}
           >
             <Volume2 className="h-3 w-3 shrink-0" />
-            <span className="truncate">١. مع الشيخ</span>
+            <span className="truncate">١. الشيخ</span>
             {completedStages.stage1 && <CheckCircle2 className="h-3 w-3 shrink-0 opacity-90" />}
           </button>
 
           {/* Stage 2 */}
           <button
             onClick={() => onSelectStage('stage2')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg border text-[11px] font-bold transition-colors ${
               currentStage === 'stage2'
-                ? 'bg-[#52674B] text-white shadow-xs dark:bg-[#688260]'
+                ? 'bg-[#52674B] text-white border-[#43553D] shadow-xs dark:bg-[#688260]'
                 : isStage2Locked
-                ? 'opacity-65 bg-[#ECE4D4]/40 dark:bg-[#1B2519]/40 text-[#7F8C7C]'
-                : 'bg-[#ECE4D4]/70 dark:bg-[#1B2519]/70 text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] hover:bg-[#E2D8C3]'
+                ? 'opacity-65 bg-[#EFE8D9]/60 dark:bg-[#172016]/50 border-[#DDD3BF]/70 dark:border-[#273525] text-[#7F8C7C]'
+                : 'bg-[#F9F6EE]/80 dark:bg-[#141B13] border-[#DDD3BF] dark:border-[#2B3A29] text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] hover:bg-[#E4DAC5]'
             }`}
           >
             {isStage2Locked ? (
@@ -195,19 +209,19 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <Mic className="h-3 w-3 shrink-0" />
             )}
-            <span className="truncate">٢. إخفاء تدريجي</span>
+            <span className="truncate">٢. الإخفاء</span>
             {completedStages.stage2 && <CheckCircle2 className="h-3 w-3 shrink-0 opacity-90" />}
           </button>
 
           {/* Stage 3 */}
           <button
             onClick={() => onSelectStage('stage3')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg border text-[11px] font-bold transition-colors ${
               currentStage === 'stage3'
-                ? 'bg-[#52674B] text-white shadow-xs dark:bg-[#688260]'
+                ? 'bg-[#52674B] text-white border-[#43553D] shadow-xs dark:bg-[#688260]'
                 : isStage3Locked
-                ? 'opacity-65 bg-[#ECE4D4]/40 dark:bg-[#1B2519]/40 text-[#7F8C7C]'
-                : 'bg-[#ECE4D4]/70 dark:bg-[#1B2519]/70 text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] hover:bg-[#E2D8C3]'
+                ? 'opacity-65 bg-[#EFE8D9]/60 dark:bg-[#172016]/50 border-[#DDD3BF]/70 dark:border-[#273525] text-[#7F8C7C]'
+                : 'bg-[#F9F6EE]/80 dark:bg-[#141B13] border-[#DDD3BF] dark:border-[#2B3A29] text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] hover:bg-[#E4DAC5]'
             }`}
           >
             {isStage3Locked ? (
@@ -215,21 +229,21 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <EyeOff className="h-3 w-3 shrink-0" />
             )}
-            <span className="truncate">٣. تسميع غيبي</span>
+            <span className="truncate">٣. التسميع</span>
             {completedStages.stage3 && <CheckCircle2 className="h-3 w-3 shrink-0 opacity-90" />}
           </button>
 
           {/* Two-Person Peer Voice Call */}
           <button
             onClick={() => onSelectStage('peer')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg border text-[11px] font-bold transition-colors ${
               currentStage === 'peer'
-                ? 'bg-[#52674B] text-white shadow-xs dark:bg-[#688260]'
-                : 'bg-[#ECE4D4]/70 dark:bg-[#1B2519]/70 text-[#3D4D38] dark:text-[#C5D8C1] hover:bg-[#E2D8C3]'
+                ? 'bg-[#52674B] text-white border-[#43553D] shadow-xs dark:bg-[#688260]'
+                : 'bg-[#F9F6EE]/80 dark:bg-[#141B13] border-[#DDD3BF] dark:border-[#2B3A29] text-[#3D4D38] dark:text-[#C5D8C1] hover:bg-[#E4DAC5]'
             }`}
           >
             <Phone className="h-3 w-3 shrink-0" />
-            <span className="truncate">التسميع الثنائي</span>
+            <span className="truncate">الثنائي</span>
             {friendsCount > 0 && (
               <span
                 className={`px-1 rounded-full text-[9px] font-bold ${
@@ -238,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'bg-[#52674B]/15 text-[#52674B] dark:text-[#C5D8C1]'
                 }`}
               >
-                {friendsCount}
+                {toArabicDigits(friendsCount)}
               </span>
             )}
           </button>

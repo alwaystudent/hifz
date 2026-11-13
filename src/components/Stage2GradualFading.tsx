@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { AyahFontSize, AyahItem, SurahMeta, WordToken, Reciter, StageMode } from '../types/quran';
-import { tokenizeAyah } from '../utils/arabic';
+import { tokenizeAyah, toArabicDigits } from '../utils/arabic';
 import { alignSpokenTranscript } from '../utils/alignment';
 import { startReciterAyahPlayback } from '../utils/audioPlayback';
 import { RECITERS } from '../data/quranData';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { MushafHeader } from './MushafHeader';
 import {
   Mic,
   MicOff,
@@ -355,7 +356,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
           </div>
 
           <div className="flex items-center gap-1 flex-wrap justify-end">
-            <div className="flex items-center gap-0.5 p-0.5 bg-[#ECE4D4] dark:bg-[#202B1E] rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D]">
+            <div className="flex items-center gap-0.5 p-0.5 bg-[#EFE8D9] dark:bg-[#1C261B] rounded-lg border border-[#C7B99F] dark:border-[#384B36]">
               <button
                 onClick={() => handleSwitchMode('listen')}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-colors ${
@@ -380,7 +381,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center gap-0.5 p-0.5 bg-[#ECE4D4] dark:bg-[#202B1E] rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D]">
+            <div className="flex items-center gap-0.5 p-0.5 bg-[#EFE8D9] dark:bg-[#1C261B] rounded-lg border border-[#C7B99F] dark:border-[#384B36]">
               {FADING_STEPS.map((step) => (
                 <button
                   key={step}
@@ -402,9 +403,9 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                 if (onSkipStage) onSkipStage();
                 else onAdvanceToStage3({ autoStartMic: true });
               }}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#52674B] text-white hover:bg-[#43553D] shadow-xs transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg border border-[#43553D] bg-[#52674B] text-white hover:bg-[#43553D] shadow-xs transition-colors"
             >
-              <span>تخطي للمرحلة ٣</span>
+              <span>للمرحلة ٣</span>
               <ChevronLeft className="h-3 w-3" />
             </button>
           </div>
@@ -493,107 +494,125 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
         ref={scrollContainerRef}
         className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-6"
       >
+        <MushafHeader
+          surah={surah}
+          ayahs={selectedAyahs}
+          riwayah={reciter?.riwayah}
+          ayahFontSize={ayahFontSize}
+          onClickBasmalah={() => playAyahAudio(0)}
+        />
+
         <div
           className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
             ayahFontSize === 'large'
-              ? 'text-2xl sm:text-3xl leading-[2.3]'
+              ? 'text-2xl sm:text-3xl leading-[2.35]'
               : ayahFontSize === 'medium'
-              ? 'text-xl sm:text-2xl leading-[2.15]'
-              : 'text-lg sm:text-xl lg:text-[22px] leading-[2.05]'
+              ? 'text-xl sm:text-2xl leading-[2.25]'
+              : 'text-lg sm:text-xl lg:text-[22px] leading-[2.15]'
           }`}
           dir="rtl"
         >
-          {selectedAyahs.map((ayah) => {
+          {selectedAyahs.map((ayah, idx) => {
             const ayahWords = allWords.filter((w) => w.ayahNumber === ayah.numberInSurah);
             const isPlayingThis = playingAyahAudio === ayah.numberInSurah;
+            const prevPage = idx > 0 ? selectedAyahs[idx - 1]?.pageNumber : ayah.pageNumber;
+            const showPageDivider =
+              idx > 0 && typeof ayah.pageNumber === 'number' && prevPage !== ayah.pageNumber;
 
             return (
-              <span key={ayah.numberInSurah} className="inline">
-                {ayahWords.map((word) => {
-                  const isHiddenInitial = hiddenWordIds.has(word.id);
-                  const isRevealed = revealedWordIds.has(word.id);
-                  const isMatched = matchedWordIds.has(word.id);
-                  const isHinted = hintedWordIds.has(word.id);
-                  const isTargetNext = stageMode === 'test' && currentActiveWord?.id === word.id;
-                  const isWordVisible = !isHiddenInitial || isRevealed;
+              <React.Fragment key={ayah.numberInSurah}>
+                {showPageDivider && (
+                  <span className="block my-2 text-[10px] font-ui font-bold text-[#7B8877] dark:text-[#8DA08A]">
+                    — صفحة {toArabicDigits(ayah.pageNumber!)} —
+                  </span>
+                )}
+                <span className="inline">
+                  {ayahWords.map((word) => {
+                    const isHiddenInitial = hiddenWordIds.has(word.id);
+                    const isRevealed = revealedWordIds.has(word.id);
+                    const isMatched = matchedWordIds.has(word.id);
+                    const isHinted = hintedWordIds.has(word.id);
+                    const isTargetNext = stageMode === 'test' && currentActiveWord?.id === word.id;
+                    const isWordVisible = !isHiddenInitial || isRevealed;
 
-                  return (
-                    <span
-                      key={word.id}
-                      ref={(el) => {
-                        wordSpanRefs.current[word.id] = el;
-                      }}
-                      onClick={() => {
-                        if (stageMode === 'listen') {
-                          setRevealedWordIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(word.id)) next.delete(word.id);
-                            else next.add(word.id);
-                            return next;
-                          });
-                        } else if (isHiddenInitial && !isRevealed) {
-                          setHintedWordIds((prev) => new Set(prev).add(word.id));
-                          setRevealedWordIds((prev) => new Set(prev).add(word.id));
-                          setMatchedWordIds((prev) => new Set(prev).add(word.id));
-                          if (currentActiveWord?.id === word.id) {
-                            const next = activeWordIdx + 1;
-                            setActiveWordIdx(next);
-                            activeWordIdxRef.current = next;
-                            if (next >= allWords.length) {
-                              setIsRoundCompleted(true);
+                    return (
+                      <span
+                        key={word.id}
+                        ref={(el) => {
+                          wordSpanRefs.current[word.id] = el;
+                        }}
+                        onClick={() => {
+                          if (stageMode === 'listen') {
+                            setRevealedWordIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(word.id)) next.delete(word.id);
+                              else next.add(word.id);
+                              return next;
+                            });
+                          } else if (isHiddenInitial && !isRevealed) {
+                            setHintedWordIds((prev) => new Set(prev).add(word.id));
+                            setRevealedWordIds((prev) => new Set(prev).add(word.id));
+                            setMatchedWordIds((prev) => new Set(prev).add(word.id));
+                            if (currentActiveWord?.id === word.id) {
+                              const next = activeWordIdx + 1;
+                              setActiveWordIdx(next);
+                              activeWordIdxRef.current = next;
+                              if (next >= allWords.length) {
+                                setIsRoundCompleted(true);
+                              }
                             }
                           }
-                        }
-                      }}
-                      className={`relative inline-block px-1 py-0 mx-0.5 rounded-lg transition-colors duration-200 ${
-                        isMatched
-                          ? 'bg-[#52674B]/20 dark:bg-[#738C6B]/35 text-[#1F271D] dark:text-white font-bold ring-1 ring-[#52674B]/30'
-                          : isTargetNext
-                          ? 'ring-2 ring-[#52674B] bg-[#E2D8C3] dark:bg-[#2A3728] text-[#1F271D] dark:text-white font-semibold'
-                          : isHinted
-                          ? 'bg-[#52674B]/15 text-[#52674B] dark:text-[#C5D8C1]'
-                          : isWordVisible
-                          ? 'text-[#232B20] dark:text-[#F3F8F2]'
-                          : 'cursor-pointer hover:bg-[#D5CABB]/40'
-                      }`}
-                    >
-                      <span
-                        className={`transition-opacity duration-200 ${
-                          isWordVisible ? 'opacity-100' : 'opacity-0 select-none'
+                        }}
+                        className={`relative inline-block px-1 py-0 mx-0.5 rounded-lg transition-colors duration-200 ${
+                          isMatched
+                            ? 'bg-[#52674B]/20 dark:bg-[#738C6B]/35 text-[#1F271D] dark:text-white font-bold ring-1 ring-[#52674B]/30'
+                            : isTargetNext
+                            ? 'ring-2 ring-[#52674B] bg-[#E2D8C3] dark:bg-[#2A3728] text-[#1F271D] dark:text-white font-semibold'
+                            : isHinted
+                            ? 'bg-[#52674B]/15 text-[#52674B] dark:text-[#C5D8C1]'
+                            : isWordVisible
+                            ? 'text-[#232B20] dark:text-[#F3F8F2]'
+                            : 'cursor-pointer hover:bg-[#D5CABB]/40'
                         }`}
                       >
-                        {word.text}
-                      </span>
-
-                      {!isWordVisible && (
-                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="w-full border-b-2 border-dashed -mb-1.5 border-[#52674B]/60 dark:border-[#738C6B]/60" />
+                        <span
+                          className={`transition-opacity duration-200 ${
+                            isWordVisible ? 'opacity-100' : 'opacity-0 select-none'
+                          }`}
+                        >
+                          {word.text}
                         </span>
-                      )}
-                    </span>
-                  );
-                })}
 
-                <button
-                  type="button"
-                  onClick={() => playAyahAudio(ayah.numberInSurah)}
-                  className={`inline-flex items-center gap-1 mx-1 px-1.5 py-0 rounded-lg transition-colors cursor-pointer font-scheherazade ayah-number font-normal ${
-                    ayahFontSize === 'large'
-                      ? 'text-xl sm:text-2xl'
-                      : ayahFontSize === 'medium'
-                      ? 'text-lg sm:text-xl'
-                      : 'text-base sm:text-lg'
-                  } ${
-                    isPlayingThis
-                      ? 'bg-[#52674B] text-white ring-2 ring-[#738C6B]/40'
-                      : 'text-[#52674B] dark:text-[#A4BA9E] hover:bg-[#ECE4D4] dark:hover:bg-[#202B1E]'
-                  }`}
-                  title={`الآية ${ayah.numberInSurah} (انقر للاستماع)`}
-                >
-                  <span>۝{ayah.numberInSurah}</span>
-                  {isPlayingThis && <Volume2 className="h-3.5 w-3.5 inline" />}
-                </button>{' '}
-              </span>
+                        {!isWordVisible && (
+                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="w-full border-b-2 border-dashed -mb-1.5 border-[#52674B]/60 dark:border-[#738C6B]/60" />
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => playAyahAudio(ayah.numberInSurah)}
+                    className={`inline-flex items-center gap-1 mx-1 px-1.5 py-0 rounded-lg transition-colors cursor-pointer ayah-number font-normal ${
+                      ayahFontSize === 'large'
+                        ? 'text-xl sm:text-2xl'
+                        : ayahFontSize === 'medium'
+                        ? 'text-lg sm:text-xl'
+                        : 'text-base sm:text-lg'
+                    } ${
+                      isPlayingThis
+                        ? 'bg-[#52674B] text-white ring-2 ring-[#738C6B]/40'
+                        : 'text-[#52674B] dark:text-[#A4BA9E] hover:bg-[#ECE4D4] dark:hover:bg-[#202B1E]'
+                    }`}
+                    title={`الآية ${toArabicDigits(ayah.numberInSurah)} (انقر للاستماع)`}
+                  >
+                    <span>۝{toArabicDigits(ayah.numberInSurah)}</span>
+                    {isPlayingThis && <Volume2 className="h-3.5 w-3.5 inline" />}
+                  </button>{' '}
+                </span>
+              </React.Fragment>
             );
           })}
         </div>
@@ -656,15 +675,15 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 mx-auto flex-wrap">
+          <div className="flex items-center gap-1 p-0.5 rounded-xl border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9]/80 dark:bg-[#1C261B] mx-auto flex-wrap">
             {stageMode === 'test' ? (
               <>
                 <button
                   onClick={isListening ? stopListening : startListening}
-                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors shadow-xs ${
+                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors shadow-xs ${
                     isListening
-                      ? 'bg-[#8C463F] hover:bg-[#7A3B35] text-white'
-                      : 'bg-[#52674B] hover:bg-[#43553D] text-white'
+                      ? 'bg-[#8C463F] hover:bg-[#7A3B35] border-[#7A3B35] text-white'
+                      : 'bg-[#52674B] hover:bg-[#43553D] border-[#43553D] text-white'
                   }`}
                 >
                   {isListening ? (
@@ -675,7 +694,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                   ) : (
                     <>
                       <Mic className="h-3.5 w-3.5" />
-                      <span>فتح الميكروفون</span>
+                      <span>ابدأ</span>
                     </>
                   )}
                 </button>
@@ -683,7 +702,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                 <button
                   onClick={giveHint}
                   disabled={activeWordIdx >= allWords.length}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D] bg-[#F6F2EA] dark:bg-[#1D271B] hover:bg-[#EAE0D0] text-[#3D4D38] dark:text-[#C5D8C1] disabled:opacity-30 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#F9F6EE] dark:bg-[#141A13] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] disabled:opacity-30 transition-colors"
                 >
                   <HelpCircle className="h-3.5 w-3.5" />
                   <span>تلميح</span>
@@ -692,15 +711,15 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
                 <button
                   onClick={manualStepNext}
                   disabled={activeWordIdx >= allWords.length}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D] bg-[#F6F2EA] dark:bg-[#1D271B] hover:bg-[#EAE0D0] text-[#3D4D38] dark:text-[#C5D8C1] disabled:opacity-30 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#F9F6EE] dark:bg-[#141A13] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] disabled:opacity-30 transition-colors"
                 >
                   <span>تخطي ⇥</span>
                 </button>
 
                 <button
                   onClick={() => resetRound()}
-                  className="p-1.5 rounded-lg text-[#6F7D6C] hover:bg-[#ECE5D5] dark:hover:bg-[#202B1E] transition-colors"
-                  title="إعادة التكرار الحالي"
+                  className="p-1.5 rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#F9F6EE] dark:bg-[#141A13] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#E4DAC5] dark:hover:bg-[#202B1E] transition-colors"
+                  title="إعادة"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
@@ -709,14 +728,14 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
               <>
                 <button
                   onClick={revealAllWords}
-                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] hover:bg-[#E2D8C3] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D]"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#F9F6EE] dark:bg-[#141A13] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36]"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  <span>كشف الكل</span>
+                  <span>كشف</span>
                 </button>
                 <button
                   onClick={hideAllWords}
-                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] hover:bg-[#E2D8C3] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D]"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#F9F6EE] dark:bg-[#141A13] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36]"
                 >
                   <EyeOff className="h-3.5 w-3.5" />
                   <span>إخفاء</span>
@@ -727,7 +746,7 @@ export const Stage2GradualFading: React.FC<Stage2GradualFadingProps> = ({
 
           <button
             onClick={onBackToStage1}
-            className="text-[11px] text-[#6F7D6C] hover:text-[#2B3527] dark:text-[#9FB19B] dark:hover:text-white px-1.5 py-0.5"
+            className="text-[11px] font-bold text-[#485643] hover:text-[#2B3527] dark:text-[#B7C7B2] dark:hover:text-white px-2.5 py-1 rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9] dark:bg-[#1C261B]"
           >
             ← للشيخ
           </button>

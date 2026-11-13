@@ -54,7 +54,8 @@ export function startReciterAyahPlayback({
   // Path A: Direct Ayah MP3 (EveryAyah)
   if (!reciter.mp3QuranReadId || !reciter.mp3QuranFolderUrl) {
     clearListeners();
-    const url = getAyahAudioUrl(reciter.subfolder, surahNumber, ayahNum);
+    const audioAyahNum = surahNumber === 1 ? (ayahNum === 0 ? 1 : ayahNum + 1) : ayahNum;
+    const url = getAyahAudioUrl(reciter.subfolder, surahNumber, audioAyahNum);
     audio.src = url;
     audio.playbackRate = playbackRate;
     audio.muted = isMuted;
@@ -93,14 +94,26 @@ export function startReciterAyahPlayback({
     .then((timings) => {
       if (cancelled) return;
 
-      const segment = timings.find((t) => t.ayah === ayahNum);
+      const segment =
+        surahNumber === 1 && ayahNum === 0
+          ? timings.find((t) => t.ayah === 1)
+          : timings.find((t) => t.ayah === ayahNum);
       if (!segment) {
         // Fallback: if timing entry missing, play surah from start safely
         throw new Error(`No timing found for surah ${surahNumber} ayah ${ayahNum}`);
       }
 
-      const startSec = Math.max(0, segment.start_time / 1000);
-      const endSec = Math.max(startSec + 0.3, segment.end_time / 1000);
+      let startSec = Math.max(0, segment.start_time / 1000);
+      let endSec = Math.max(startSec + 0.3, segment.end_time / 1000);
+      if (surahNumber === 1 && ayahNum === 6) {
+        const seg7 = timings.find((t) => t.ayah === 7);
+        if (seg7) {
+          endSec = Math.max(endSec, seg7.end_time / 1000);
+        }
+      } else if (surahNumber === 1 && ayahNum === 0) {
+        startSec = 0;
+        endSec = Math.max(2, segment.start_time / 1000);
+      }
       const segDuration = Math.max(0.5, endSec - startSec);
 
       clearListeners();
@@ -182,7 +195,8 @@ export function preloadReciterAyah(
     }
     fetchAyahTimings(reciter.mp3QuranReadId, surahNumber).catch(() => {});
   } else {
-    preloadAudio.src = getAyahAudioUrl(reciter.subfolder, surahNumber, ayahNum);
+    const audioAyahNum = surahNumber === 1 ? (ayahNum === 0 ? 1 : ayahNum + 1) : ayahNum;
+    preloadAudio.src = getAyahAudioUrl(reciter.subfolder, surahNumber, audioAyahNum);
     preloadAudio.preload = 'auto';
   }
 }

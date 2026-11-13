@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { AyahItem, Reciter, RepetitionSettings, QueueItem, SurahMeta, StageMode } from '../types/quran';
 import { buildRepetitionQueue } from '../utils/repetitionQueue';
 import { startReciterAyahPlayback, preloadReciterAyah } from '../utils/audioPlayback';
+import { toArabicDigits } from '../utils/arabic';
+import { MushafHeader } from './MushafHeader';
 import {
   Play,
   Pause,
@@ -87,8 +89,8 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
 
   const activeDescription =
     stageMode === 'listen'
-      ? `استماع الآية ${activeAyahNumber} (${listenIndex + 1} من ${filteredAyahs.length})`
-      : currentItem?.stepDescription || 'جاهز للاستماع والتكرار';
+      ? `الآية ${toArabicDigits(activeAyahNumber)} (${toArabicDigits(listenIndex + 1)}/${toArabicDigits(filteredAyahs.length)})`
+      : currentItem?.stepDescription || 'جاهز للتكرار';
 
   const stopActivePlayback = useCallback(() => {
     if (cancelPlaybackRef.current) {
@@ -357,6 +359,24 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
     playCurrentAudio();
   };
 
+  const playBasmalahAudio = () => {
+    if (surah.number === 9) return;
+    stopActivePlayback();
+    setIsPlaying(false);
+    if (!audioRef.current) audioRef.current = new Audio();
+    cancelPlaybackRef.current = startReciterAyahPlayback({
+      audio: audioRef.current,
+      reciter,
+      surahNumber: surah.number,
+      ayahNum: 0,
+      playbackRate: settings.playbackSpeed,
+      isMuted,
+      onStarted: () => {},
+      onEnded: () => {},
+      onError: () => {},
+    });
+  };
+
   const jumpToAyah = (ayahNum: number) => {
     if (stageMode === 'listen') {
       const idx = filteredAyahs.findIndex((a) => a.numberInSurah === ayahNum);
@@ -414,7 +434,7 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
           </div>
 
           <div className="flex items-center gap-1 flex-wrap justify-end">
-            <div className="flex items-center gap-0.5 p-0.5 bg-[#ECE4D4] dark:bg-[#202B1E] rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D]">
+            <div className="flex items-center gap-0.5 p-0.5 bg-[#EFE8D9] dark:bg-[#1C261B] rounded-lg border border-[#C7B99F] dark:border-[#384B36]">
               <button
                 onClick={() => handleSwitchMode('listen')}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-colors ${
@@ -424,7 +444,7 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                 }`}
               >
                 <Headphones className="h-3 w-3" />
-                <span>الاستماع</span>
+                <span>استماع</span>
               </button>
               <button
                 onClick={() => handleSwitchMode('test')}
@@ -435,15 +455,15 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                 }`}
               >
                 <Target className="h-3 w-3" />
-                <span>الاختبار</span>
+                <span>تكرار</span>
               </button>
             </div>
 
             <button
               onClick={onOpenRangeModal}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] hover:bg-[#E2D8C3] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D] transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-[#EFE8D9] dark:bg-[#1C261B] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36] transition-colors"
             >
-              <span>({fromAyah}-{toAyah})</span>
+              <span>({toArabicDigits(fromAyah)}-{toArabicDigits(toAyah)})</span>
             </button>
 
             <button
@@ -453,19 +473,21 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                 if (onSkipStage) onSkipStage();
                 else onAdvanceToStage2({ autoStartMic: true });
               }}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#52674B] text-white hover:bg-[#43553D] shadow-xs transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg border border-[#43553D] bg-[#52674B] text-white hover:bg-[#43553D] shadow-xs transition-colors"
             >
-              <span>تخطي للمرحلة ٢</span>
+              <span>للمرحلة ٢</span>
               <SkipBack className="h-3 w-3" />
             </button>
 
             {stageMode === 'test' && (
               <button
                 onClick={() => setShowQueueDrawer(!showQueueDrawer)}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] hover:bg-[#E2D8C3] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D] transition-colors"
+                className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-[#EFE8D9] dark:bg-[#1C261B] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36] transition-colors"
               >
                 <ListOrdered className="h-3 w-3" />
-                <span className="hidden md:inline">({currentIndex + 1}/{queue.length})</span>
+                <span className="hidden md:inline">
+                  ({toArabicDigits(currentIndex + 1)}/{toArabicDigits(queue.length)})
+                </span>
               </button>
             )}
           </div>
@@ -540,50 +562,67 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
         ref={scrollContainerRef}
         className="flex-1 min-h-0 overflow-y-auto w-full rounded-2xl mushaf-canvas p-3 sm:p-5 lg:p-6"
       >
+        <MushafHeader
+          surah={surah}
+          ayahs={filteredAyahs}
+          riwayah={reciter.riwayah}
+          ayahFontSize={settings.ayahFontSize}
+          onClickBasmalah={playBasmalahAudio}
+        />
+
         <div
           className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
             settings.ayahFontSize === 'large'
-              ? 'text-2xl sm:text-3xl leading-[2.3]'
+              ? 'text-2xl sm:text-3xl leading-[2.35]'
               : settings.ayahFontSize === 'medium'
-              ? 'text-xl sm:text-2xl leading-[2.15]'
-              : 'text-lg sm:text-xl lg:text-[22px] leading-[2.05]'
+              ? 'text-xl sm:text-2xl leading-[2.25]'
+              : 'text-lg sm:text-xl lg:text-[22px] leading-[2.15]'
           }`}
           dir="rtl"
         >
-          {filteredAyahs.map((ayah) => {
+          {filteredAyahs.map((ayah, idx) => {
             const isPlayingThisAyah = activeAyahNumber === ayah.numberInSurah;
             const isInCurrentLinkGroup =
               stageMode === 'test' && currentItem?.allAyahsInGroup?.includes(ayah.numberInSurah);
+            const prevPage = idx > 0 ? filteredAyahs[idx - 1]?.pageNumber : ayah.pageNumber;
+            const showPageDivider =
+              idx > 0 && typeof ayah.pageNumber === 'number' && prevPage !== ayah.pageNumber;
 
             return (
-              <span
-                key={ayah.numberInSurah}
-                ref={(el) => {
-                  ayahSpanRefs.current[ayah.numberInSurah] = el;
-                }}
-                onClick={() => jumpToAyah(ayah.numberInSurah)}
-                className={`inline transition-colors duration-200 cursor-pointer rounded-lg px-1 py-0.5 mx-0.5 ${
-                  isPlayingThisAyah
-                    ? 'bg-[#52674B]/20 dark:bg-[#738C6B]/35 text-[#1C2519] dark:text-white font-bold ring-1 ring-[#738C6B]/50'
-                    : isInCurrentLinkGroup
-                    ? 'bg-[#E7DFCFA0] dark:bg-[#253223A0] text-[#2F3A2A] dark:text-[#C5D8C1]'
-                    : 'hover:bg-[#EBE2D2]/60 dark:hover:bg-[#202B1E]/60'
-                }`}
-                title={`الآية ${ayah.numberInSurah} (انقر للاستماع)`}
-              >
-                <span>{ayah.text}</span>
+              <React.Fragment key={ayah.numberInSurah}>
+                {showPageDivider && (
+                  <span className="block my-2 text-[10px] font-ui font-bold text-[#7B8877] dark:text-[#8DA08A]">
+                    — صفحة {toArabicDigits(ayah.pageNumber!)} —
+                  </span>
+                )}
                 <span
-                  className={`inline-block font-scheherazade text-[#52674B] dark:text-[#A4BA9E] mr-1.5 ayah-number font-normal ${
-                    settings.ayahFontSize === 'large'
-                      ? 'text-xl sm:text-2xl'
-                      : settings.ayahFontSize === 'medium'
-                      ? 'text-lg sm:text-xl'
-                      : 'text-base sm:text-lg'
+                  ref={(el) => {
+                    ayahSpanRefs.current[ayah.numberInSurah] = el;
+                  }}
+                  onClick={() => jumpToAyah(ayah.numberInSurah)}
+                  className={`inline transition-colors duration-200 cursor-pointer rounded-lg px-1 py-0.5 mx-0.5 ${
+                    isPlayingThisAyah
+                      ? 'bg-[#52674B]/20 dark:bg-[#738C6B]/35 text-[#1C2519] dark:text-white font-bold ring-1 ring-[#738C6B]/50'
+                      : isInCurrentLinkGroup
+                      ? 'bg-[#E7DFCFA0] dark:bg-[#253223A0] text-[#2F3A2A] dark:text-[#C5D8C1]'
+                      : 'hover:bg-[#EBE2D2]/60 dark:hover:bg-[#202B1E]/60'
                   }`}
+                  title={`الآية ${toArabicDigits(ayah.numberInSurah)} (انقر للاستماع)`}
                 >
-                  ۝{ayah.numberInSurah}
-                </span>{' '}
-              </span>
+                  <span>{ayah.text}</span>
+                  <span
+                    className={`inline-block ayah-number text-[#52674B] dark:text-[#A4BA9E] mr-1.5 font-normal ${
+                      settings.ayahFontSize === 'large'
+                        ? 'text-xl sm:text-2xl'
+                        : settings.ayahFontSize === 'medium'
+                        ? 'text-lg sm:text-xl'
+                        : 'text-base sm:text-lg'
+                    }`}
+                  >
+                    ۝{toArabicDigits(ayah.numberInSurah)}
+                  </span>{' '}
+                </span>
+              </React.Fragment>
             );
           })}
         </div>
@@ -596,11 +635,11 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
             {activeDescription}
           </div>
 
-          <div className="flex items-center gap-1.5 mx-auto">
+          <div className="flex items-center gap-1 p-0.5 rounded-xl border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9]/80 dark:bg-[#1C261B] mx-auto">
             <button
               onClick={handlePrev}
               disabled={stageMode === 'listen' ? listenIndex === 0 : currentIndex === 0}
-              className="p-1.5 rounded-lg text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE5D5] dark:hover:bg-[#202B1E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg border border-transparent hover:border-[#C7B99F] dark:hover:border-[#384B36] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#F9F6EE] dark:hover:bg-[#253223] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="السابق"
             >
               <SkipForward className="h-4 w-4" />
@@ -608,7 +647,7 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
 
             <button
               onClick={togglePlayPause}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#52674B] hover:bg-[#43553D] text-white shadow-xs transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#43553D] bg-[#52674B] hover:bg-[#43553D] text-white shadow-xs transition-colors"
               title={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 mr-0.5" />}
@@ -616,8 +655,8 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
 
             <button
               onClick={handleRestartCurrent}
-              className="p-1.5 rounded-lg text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE5D5] dark:hover:bg-[#202B1E] transition-colors"
-              title="إعادة الآية الحالية"
+              className="p-1.5 rounded-lg border border-transparent hover:border-[#C7B99F] dark:hover:border-[#384B36] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#F9F6EE] dark:hover:bg-[#253223] transition-colors"
+              title="إعادة الآية"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
@@ -629,7 +668,7 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                   ? listenIndex + 1 >= filteredAyahs.length
                   : currentIndex + 1 >= queue.length
               }
-              className="p-1.5 rounded-lg text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE5D5] dark:hover:bg-[#202B1E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg border border-transparent hover:border-[#C7B99F] dark:hover:border-[#384B36] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#F9F6EE] dark:hover:bg-[#253223] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="التالي"
             >
               <SkipBack className="h-4 w-4" />
@@ -638,12 +677,12 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
             {stageMode === 'listen' && (
               <button
                 onClick={() => setIsLooping(!isLooping)}
-                className={`p-1.5 rounded-lg transition-colors ${
+                className={`p-1.5 rounded-lg border transition-colors ${
                   isLooping
-                    ? 'bg-[#52674B] text-white'
-                    : 'text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE5D5] dark:hover:bg-[#202B1E]'
+                    ? 'bg-[#52674B] text-white border-[#43553D]'
+                    : 'border-transparent text-[#485643] dark:text-[#B7C7B2] hover:bg-[#F9F6EE] dark:hover:bg-[#253223]'
                 }`}
-                title={isLooping ? 'إيقاف التكرار المستمر' : 'تفعيل التكرار المستمر'}
+                title={isLooping ? 'إيقاف التكرار' : 'تكرار مستمر'}
               >
                 <Repeat className="h-4 w-4" />
               </button>
@@ -660,7 +699,7 @@ export const Stage1SheikRecitation: React.FC<Stage1SheikRecitationProps> = ({
                 setIsMuted(nextMute);
                 if (audioRef.current) audioRef.current.muted = nextMute;
               }}
-              className="p-1 rounded-lg hover:bg-[#ECE5D5] dark:hover:bg-[#202B1E]"
+              className="p-1 rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9] dark:bg-[#1C261B] hover:bg-[#E4DAC5] dark:hover:bg-[#253223]"
             >
               {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
             </button>

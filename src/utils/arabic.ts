@@ -191,6 +191,14 @@ export function isWordMatch(targetClean: string, spokenClean: string): boolean {
 }
 
 /**
+ * Converts Western digits to Eastern Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩) for Mushaf ayah ornaments
+ */
+export function toArabicDigits(num: number | string): string {
+  const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return String(num).replace(/\d/g, (d) => arabicDigits[Number(d)] ?? d);
+}
+
+/**
  * Formats a 1-based number to 3-digit zero-padded string (e.g., 1 -> "001")
  */
 export function pad3(num: number): string {

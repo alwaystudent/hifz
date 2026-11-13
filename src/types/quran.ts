@@ -21,6 +21,8 @@ export interface AyahItem {
   number: number; // overall global ayah number
   numberInSurah: number;
   text: string;
+  pageNumber?: number;
+  juzNumber?: number;
   words?: string[];
 }
 

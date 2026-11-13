@@ -311,7 +311,7 @@ export function useFriendsPresence({
           passage: {
             surahNumber: Number(data.surahNumber || 1),
             fromAyah: Number(data.fromAyah || 1),
-            toAyah: Number(data.toAyah || 7),
+            toAyah: Number(data.toAyah || 6),
             riwayah:
               data.riwayah === 'warsh' || data.riwayah === 'qalun'
                 ? data.riwayah

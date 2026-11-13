@@ -9,9 +9,10 @@ import {
   SurahMeta,
 } from '../types/quran';
 import { SURAHS_LIST, RIWAYAT_LIST } from '../data/quranData';
-import { tokenizeAyah } from '../utils/arabic';
+import { tokenizeAyah, toArabicDigits } from '../utils/arabic';
 import { usePeerVoiceCall } from '../hooks/usePeerVoiceCall';
 import { OutgoingCallState } from '../hooks/useFriendsPresence';
+import { MushafHeader } from './MushafHeader';
 import {
   Phone,
   PhoneOff,
@@ -336,10 +337,10 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
             <div className="rounded-xl bg-[#ECE4D4]/70 dark:bg-[#1E291D] border border-[#DDD3BF] dark:border-[#2C3B29] px-3 py-2 text-xs text-[#3D4D38] dark:text-[#C5D8C1] flex items-center justify-center gap-2 flex-wrap">
               <BookOpen className="h-3.5 w-3.5 text-[#52674B]" />
               <span className="font-scheherazade text-sm font-bold">
-                سورة {surah.name}
+                {surah.name}
               </span>
-              <span className="font-mono text-[11px]">
-                ({fromAyah}-{toAyah})
+              <span className="text-[11px]">
+                ({toArabicDigits(fromAyah)}-{toArabicDigits(toAyah)})
               </span>
             </div>
             <button
@@ -413,28 +414,28 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
           {/* Compact Live Call Actions */}
           <div className="flex items-center gap-1 flex-wrap justify-end">
             {inCall && (
-              <>
+              <div className="flex items-center gap-1 p-0.5 rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9] dark:bg-[#1C261B]">
                 <button
                   onClick={handleCopyInvite}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] hover:bg-[#E2D8C3] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D] transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-md bg-[#F9F6EE] dark:bg-[#141A13] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36] transition-colors"
                 >
                   {copiedInvite ? <Check className="h-3 w-3 text-[#52674B]" /> : <Copy className="h-3 w-3" />}
-                  <span>{copiedInvite ? 'تم النسخ' : 'رابط الدعوة'}</span>
+                  <span>{copiedInvite ? 'تم النسخ' : 'دعوة'}</span>
                 </button>
 
                 <button
                   onClick={() => swapRoles(isLocalReciter && otherPeer ? otherPeer.peerId : localPeerId)}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] hover:bg-[#E2D8C3] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D] transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-md bg-[#F9F6EE] dark:bg-[#141A13] hover:bg-[#E4DAC5] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36] transition-colors"
                   title="تبديل الأدوار بين السارد والمُسمِّع"
                 >
                   <ArrowLeftRight className="h-3 w-3" />
-                  <span>{isLocalReciter ? 'السارد' : 'المُسمِّع'}</span>
+                  <span>{isLocalReciter ? 'سارد' : 'مسمع'}</span>
                 </button>
 
                 {isLocalReciter && (
                   <button
                     onClick={() => setHideTextForReciter((prev) => !prev)}
-                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-[#ECE4D4] dark:bg-[#202B1E] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#D5CABB] dark:border-[#2F3F2D]"
+                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-md bg-[#F9F6EE] dark:bg-[#141A13] text-[#3D4D38] dark:text-[#C5D8C1] border border-[#C7B99F] dark:border-[#384B36]"
                   >
                     {hideTextForReciter ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                     <span>{hideTextForReciter ? 'إظهار' : 'إخفاء'}</span>
@@ -443,10 +444,10 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
 
                 <button
                   onClick={toggleMute}
-                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg transition-colors ${
+                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-md border transition-colors ${
                     isMuted
-                      ? 'bg-[#8C463F] text-white'
-                      : 'bg-[#52674B] text-white hover:bg-[#43553D]'
+                      ? 'bg-[#8C463F] border-[#7A3B35] text-white'
+                      : 'bg-[#52674B] border-[#43553D] text-white hover:bg-[#43553D]'
                   }`}
                 >
                   {isMuted ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
@@ -455,12 +456,12 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
 
                 <button
                   onClick={handleHangup}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-[#8C463F] hover:bg-[#7A3B35] text-white transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-md border border-[#7A3B35] bg-[#8C463F] hover:bg-[#7A3B35] text-white transition-colors"
                 >
                   <PhoneOff className="h-3 w-3" />
                   <span>إنهاء</span>
                 </button>
-              </>
+              </div>
             )}
 
             <button
@@ -468,7 +469,7 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                 await handleHangup();
                 onExitPeerMode();
               }}
-              className="px-2 py-1 text-[11px] font-semibold rounded-lg border border-[#D5CABB] dark:border-[#2F3F2D] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#ECE4D4] dark:hover:bg-[#202B1E]"
+              className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-[#C7B99F] dark:border-[#384B36] bg-[#EFE8D9] dark:bg-[#1C261B] text-[#485643] dark:text-[#B7C7B2] hover:bg-[#E4DAC5] dark:hover:bg-[#202B1E]"
             >
               رجوع
             </button>
@@ -489,7 +490,7 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                   updateRoomPassage(next);
                   onSyncPassageToApp(next);
                 }}
-                className="px-1.5 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-[#2B3527] dark:text-[#F1F6F0] font-semibold"
+                className="px-1.5 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#C7B99F] dark:border-[#384B36] text-[#2B3527] dark:text-[#F1F6F0] font-semibold"
               >
                 {RIWAYAT_LIST.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -507,29 +508,26 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                     ...passage,
                     surahNumber: sNum,
                     fromAyah: 1,
-                    toAyah: Math.min(10, meta.numberOfAyahs),
+                    toAyah: sNum === 1 ? meta.numberOfAyahs : Math.min(10, meta.numberOfAyahs),
                   };
                   updateRoomPassage(next);
                   onSyncPassageToApp(next);
                 }}
-                className="px-1.5 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-[#2B3527] dark:text-[#F1F6F0] font-semibold"
+                className="px-1.5 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#C7B99F] dark:border-[#384B36] text-[#2B3527] dark:text-[#F1F6F0] font-semibold"
               >
                 {SURAHS_LIST.map((s) => (
                   <option key={s.number} value={s.number}>
-                    {s.number}. {s.name}
+                    {toArabicDigits(s.number)}. {s.name}
                   </option>
                 ))}
               </select>
 
               <div className="flex items-center gap-1">
                 <span>من</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={activeSurahMeta.numberOfAyahs}
+                <select
                   value={fromAyah}
                   onChange={(e) => {
-                    const val = Math.max(1, Math.min(activeSurahMeta.numberOfAyahs, Number(e.target.value) || 1));
+                    const val = Number(e.target.value) || 1;
                     const next: RoomPassageState = {
                       ...passage,
                       fromAyah: val,
@@ -538,16 +536,20 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                     updateRoomPassage(next);
                     onSyncPassageToApp(next);
                   }}
-                  className="w-11 px-1 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-center font-mono"
-                />
+                  aria-label="من الآية"
+                  className="px-1.5 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#C7B99F] dark:border-[#384B36] text-center font-bold cursor-pointer"
+                >
+                  {Array.from({ length: activeSurahMeta.numberOfAyahs }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {toArabicDigits(n)}
+                    </option>
+                  ))}
+                </select>
                 <span>إلى</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={activeSurahMeta.numberOfAyahs}
-                  value={toAyah}
+                <select
+                  value={Math.max(fromAyah, Math.min(toAyah, activeSurahMeta.numberOfAyahs))}
                   onChange={(e) => {
-                    const val = Math.max(fromAyah, Math.min(activeSurahMeta.numberOfAyahs, Number(e.target.value) || fromAyah));
+                    const val = Number(e.target.value) || fromAyah;
                     const next: RoomPassageState = {
                       ...passage,
                       toAyah: val,
@@ -555,8 +557,18 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
                     updateRoomPassage(next);
                     onSyncPassageToApp(next);
                   }}
-                  className="w-11 px-1 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#D5CABB] dark:border-[#2F3F2D] text-center font-mono"
-                />
+                  aria-label="إلى الآية"
+                  className="px-1.5 py-0.5 rounded-md bg-[#FDFCF9] dark:bg-[#111710] border border-[#C7B99F] dark:border-[#384B36] text-center font-bold cursor-pointer"
+                >
+                  {Array.from(
+                    { length: Math.max(1, activeSurahMeta.numberOfAyahs - fromAyah + 1) },
+                    (_, i) => fromAyah + i
+                  ).map((n) => (
+                    <option key={n} value={n}>
+                      {toArabicDigits(n)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -847,64 +859,81 @@ export const PeerTasmeeView: React.FC<PeerTasmeeViewProps> = ({
             </div>
           )}
 
+          <MushafHeader
+            surah={activeSurahMeta}
+            ayahs={selectedAyahs}
+            riwayah={passage.riwayah}
+            ayahFontSize={ayahFontSize}
+          />
+
           <div
             className={`font-quran text-center text-[#232B20] dark:text-[#F3F8F2] select-none ${
               ayahFontSize === 'large'
-                ? 'text-2xl sm:text-3xl leading-[2.3]'
+                ? 'text-2xl sm:text-3xl leading-[2.35]'
                 : ayahFontSize === 'medium'
-                ? 'text-xl sm:text-2xl leading-[2.15]'
-                : 'text-lg sm:text-xl lg:text-[22px] leading-[2.05]'
+                ? 'text-xl sm:text-2xl leading-[2.25]'
+                : 'text-lg sm:text-xl lg:text-[22px] leading-[2.15]'
             }`}
             dir="rtl"
           >
-            {selectedAyahs.map((ayah) => {
+            {selectedAyahs.map((ayah, idx) => {
               const words = ayahWordsMap[ayah.numberInSurah] || [];
               const shouldHide = isLocalReciter && hideTextForReciter;
               const isAyahFocused = focusedAyahNumber === ayah.numberInSurah;
+              const prevPage = idx > 0 ? selectedAyahs[idx - 1]?.pageNumber : ayah.pageNumber;
+              const showPageDivider =
+                idx > 0 && typeof ayah.pageNumber === 'number' && prevPage !== ayah.pageNumber;
 
               return (
-                <span key={ayah.numberInSurah} className="inline">
-                  {words.map((word) => {
-                    const isFocused = focusedWordId === word.id;
-                    return (
-                      <span
-                        key={word.id}
-                        onClick={() => syncFocusWord(isFocused ? null : word.id, ayah.numberInSurah)}
-                        className={`relative inline-block px-1 py-0 mx-0.5 rounded-lg cursor-pointer transition-colors ${
-                          isFocused
-                            ? 'bg-[#52674B]/25 dark:bg-[#738C6B]/45 ring-2 ring-[#52674B] font-bold'
-                            : 'hover:bg-[#E2D8C3]/50 dark:hover:bg-[#253223]/50'
-                        }`}
-                        title="انقر لتحديد الموضع لكلا الطرفين"
-                      >
-                        <span className={shouldHide && !isFocused ? 'opacity-0' : 'opacity-100'}>
-                          {word.text}
-                        </span>
-                        {shouldHide && !isFocused && (
-                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="w-full border-b-2 border-dashed -mb-1.5 border-[#52674B]/45" />
+                <React.Fragment key={ayah.numberInSurah}>
+                  {showPageDivider && (
+                    <span className="block my-2 text-[10px] font-ui font-bold text-[#7B8877] dark:text-[#8DA08A]">
+                      — صفحة {toArabicDigits(ayah.pageNumber!)} —
+                    </span>
+                  )}
+                  <span className="inline">
+                    {words.map((word) => {
+                      const isFocused = focusedWordId === word.id;
+                      return (
+                        <span
+                          key={word.id}
+                          onClick={() => syncFocusWord(isFocused ? null : word.id, ayah.numberInSurah)}
+                          className={`relative inline-block px-1 py-0 mx-0.5 rounded-lg cursor-pointer transition-colors ${
+                            isFocused
+                              ? 'bg-[#52674B]/25 dark:bg-[#738C6B]/45 ring-2 ring-[#52674B] font-bold'
+                              : 'hover:bg-[#E2D8C3]/50 dark:hover:bg-[#253223]/50'
+                          }`}
+                          title="انقر لتحديد الموضع لكلا الطرفين"
+                        >
+                          <span className={shouldHide && !isFocused ? 'opacity-0' : 'opacity-100'}>
+                            {word.text}
                           </span>
-                        )}
-                      </span>
-                    );
-                  })}
-                  <span
-                    onClick={() => syncFocusWord(null, isAyahFocused ? null : ayah.numberInSurah)}
-                    className={`inline-block font-scheherazade mx-1 px-1 rounded-lg cursor-pointer ayah-number ${
-                      ayahFontSize === 'large'
-                        ? 'text-xl sm:text-2xl'
-                        : ayahFontSize === 'medium'
-                        ? 'text-lg sm:text-xl'
-                        : 'text-base sm:text-lg'
-                    } ${
-                      isAyahFocused
-                        ? 'bg-[#52674B] text-white'
-                        : 'text-[#52674B] dark:text-[#A4BA9E]'
-                    }`}
-                  >
-                    ۝{ayah.numberInSurah}
-                  </span>{' '}
-                </span>
+                          {shouldHide && !isFocused && (
+                            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="w-full border-b-2 border-dashed -mb-1.5 border-[#52674B]/45" />
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                    <span
+                      onClick={() => syncFocusWord(null, isAyahFocused ? null : ayah.numberInSurah)}
+                      className={`inline-block mx-1 px-1 rounded-lg cursor-pointer ayah-number font-normal ${
+                        ayahFontSize === 'large'
+                          ? 'text-xl sm:text-2xl'
+                          : ayahFontSize === 'medium'
+                          ? 'text-lg sm:text-xl'
+                          : 'text-base sm:text-lg'
+                      } ${
+                        isAyahFocused
+                          ? 'bg-[#52674B] text-white'
+                          : 'text-[#52674B] dark:text-[#A4BA9E]'
+                      }`}
+                    >
+                      ۝{toArabicDigits(ayah.numberInSurah)}
+                    </span>{' '}
+                  </span>
+                </React.Fragment>
               );
             })}
           </div>
